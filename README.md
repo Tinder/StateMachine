@@ -1,6 +1,6 @@
 # StateMachine
 
-A Kotlin library for finite state machines.
+A Kotlin DSL for finite state machine.
 
 ### Usage
 
