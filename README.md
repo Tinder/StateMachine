@@ -68,6 +68,8 @@ val stateMachine = StateMachine.create<State, Event, SideEffect> {
 ~~~
 
 ### Download
+**TODO: make the jar public**
+
 Download [the latest JAR][latest-jar] or grab via Maven:
 ```xml
 <dependency>
