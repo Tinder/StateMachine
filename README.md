@@ -67,7 +67,7 @@ val stateMachine = StateMachine.create<State, Event, SideEffect> {
 }
 ~~~
 
-Perform state transitions
+Perform state transitions:
 ~~~kotlin
 assertThat(stateMachine.state).isEqualTo(Solid)
 
