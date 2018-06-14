@@ -2,6 +2,8 @@
 
 A Kotlin DSL for finite state machine.
 
+`StateMachine` is used in [Scarlet](https://github.com/Tinder/Scarlet)
+
 ### Usage
 
 In this example, we create a `StateMachine` from the following state diagram.
