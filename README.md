@@ -8,7 +8,7 @@ In this example, we create a `StateMachine` from the following state diagram.
 
 ![State Diagram](./example/activity-diagram.png)
 
-Define states:
+Define states, event, and side effects:
 ~~~kotlin
 sealed class State {
     object Solid : State()
@@ -80,3 +80,5 @@ implementation 'com.tinder:state-machine:0.0.1'
 ```
 
 ### License
+
+[latest-jar]: https://tinder.com/
