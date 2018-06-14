@@ -67,6 +67,21 @@ val stateMachine = StateMachine.create<State, Event, SideEffect> {
 }
 ~~~
 
+Perform state transitions
+~~~kotlin
+assertThat(stateMachine.state).isEqualTo(Solid)
+
+// When
+val transition = stateMachine.transition(OnMelted)
+
+// Then
+assertThat(stateMachine.state).isEqualTo(Liquid)
+assertThat(transition).isEqualTo(
+    StateMachine.Transition.Valid(Solid, OnMelted, Liquid, LogMelted)
+)
+then(logger).should().log(ON_MELTED_MESSAGE)
+~~~
+
 ### Download
 **TODO: make the jar public**
 
