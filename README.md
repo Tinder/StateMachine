@@ -109,19 +109,6 @@ repositories {
 implementation 'com.github.tinder:state-machine:0.1.0'
 ```
 
-Download [the latest JAR][latest-jar] or grab via Maven:
-```xml
-<dependency>
-  <groupId>com.tinder</groupId>
-  <artifactId>state-machine</artifactId>
-  <version>0.0.1</version>
-</dependency>
-```
-or Gradle:
-```groovy
-implementation 'com.tinder:state-machine:0.0.1'
-```
-
 ### License
 ~~~
 Copyright (c) 2018, Match Group, LLC
