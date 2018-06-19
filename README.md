@@ -1,5 +1,7 @@
 # StateMachine
 
+[![Release](https://jitpack.io/v/tinder/statemachine.svg)](https://jitpack.io/#tinder/statemachine)
+
 A Kotlin DSL for finite state machine.
 
 `StateMachine` is used in [Scarlet](https://github.com/Tinder/Scarlet)
@@ -94,7 +96,7 @@ While we are working on Bintray support, `StateMachine` is available via [JitPac
 </repository>
 <dependency>
 	<groupId>com.github.tinder</groupId>
-	<artifactId>state-machine</artifactId>
+	<artifactId>statemachine</artifactId>
 	<version>0.1.0</version>
 </dependency>
 ```
@@ -106,7 +108,7 @@ repositories {
 	maven { url "https://jitpack.io" }
 }
 
-implementation 'com.github.tinder:state-machine:0.1.0'
+implementation 'com.github.tinder:statemachine:0.1.0'
 ```
 
 ### License
