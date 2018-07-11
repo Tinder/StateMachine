@@ -97,7 +97,7 @@ While we are working on Bintray support, `StateMachine` is available via [JitPac
 <dependency>
     <groupId>com.github.tinder</groupId>
     <artifactId>statemachine</artifactId>
-    <version>0.1.1</version>
+    <version>0.1.2</version>
 </dependency>
 ```
 
@@ -108,7 +108,7 @@ repositories {
     maven { url "https://jitpack.io" }
 }
 
-implementation 'com.github.tinder:statemachine:0.1.1'
+implementation 'com.github.tinder:statemachine:0.1.2'
 ```
 
 ### License
