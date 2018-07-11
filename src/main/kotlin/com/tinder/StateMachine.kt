@@ -12,7 +12,7 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
         get() = stateRef.get()
 
     fun transition(event: EVENT): Transition<STATE, EVENT, SIDE_EFFECT> {
-        val transition = synchronized(stateRef) {
+        val transition = synchronized(this) {
             val fromState = stateRef.get()
             val transition = fromState.getTransition(event)
             if (transition is Transition.Valid) {
@@ -20,6 +20,7 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
             }
             transition
         }
+        transition.notifyOnTransition()
         if (transition is Transition.Valid) {
             with(transition) {
                 with(fromState) {
@@ -30,7 +31,6 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
                 }
             }
         }
-        transition.notifyOnTransition()
         return transition
     }
 
