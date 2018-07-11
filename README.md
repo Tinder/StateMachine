@@ -86,7 +86,7 @@ then(logger).should().log(ON_MELTED_MESSAGE)
 
 ### Download
 
-While we are working on Bintray support, `StateMachine` is available via [JitPack](jitpack).
+While we are working on Bintray support, `StateMachine` is available via [JitPack][jitpack].
 
 ##### Maven:
 ```xml
@@ -140,3 +140,4 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ~~~
 
 [latest-jar]: https://tinder.com/
+[jitpack]: https://jitpack.io/#tinder/statemachine
