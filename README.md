@@ -1,6 +1,7 @@
 # StateMachine
 
-[![CircleCI](https://circleci.com/gh/Tinder/StateMachine.svg?style=svg)](https://circleci.com/gh/Tinder/StateMachine)[![Release](https://jitpack.io/v/tinder/statemachine.svg)](https://jitpack.io/#tinder/statemachine)
+[![CircleCI](https://circleci.com/gh/Tinder/StateMachine.svg?style=svg)](https://circleci.com/gh/Tinder/StateMachine)
+[![Release](https://jitpack.io/v/tinder/statemachine.svg)](https://jitpack.io/#tinder/statemachine)
 
 A Kotlin DSL for finite state machine.
 
