@@ -17,6 +17,7 @@ internal class StateMachineTest {
         private val logger = mock<Logger>()
         private val stateMachine = StateMachine.create<State, Event, SideEffect> {
             initialState(State.Solid)
+            finalStates(State.Gas)
             state<State.Solid> {
                 on<Event.OnMelted> {
                     transitionTo(State.Liquid, SideEffect.LogMelted)
@@ -98,6 +99,32 @@ internal class StateMachineTest {
                 StateMachine.Transition.Valid(State.Liquid, Event.OnVaporized, State.Gas, SideEffect.LogVaporized)
             )
             then(logger).should().log(ON_VAPORIZED_MESSAGE)
+        }
+
+        @Test
+        fun givenStateIsLiquid_onVaporized_shouldTransitionToGasStateWithFinalState() {
+            // Given
+            val stateMachine = givenStateIs(State.Liquid)
+
+            // When
+            stateMachine.transition(Event.OnVaporized)
+
+            // Then
+            assertThat(stateMachine.state).isEqualTo(State.Gas)
+            assertThat(stateMachine.isFinalState()).isEqualTo(true)
+        }
+
+        @Test
+        fun givenStateIsLiquid_onVaporized_shouldTransitionToGasStateWithResetState() {
+            // Given
+            val stateMachine = givenStateIs(State.Liquid)
+
+            // When
+            stateMachine.transition(Event.OnVaporized)
+            stateMachine.reset()
+
+            // Then
+            assertThat(stateMachine.state).isEqualTo(State.Liquid)
         }
 
         @Test

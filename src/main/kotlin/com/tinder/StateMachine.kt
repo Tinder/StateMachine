@@ -86,6 +86,7 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
 
     data class Graph<STATE : Any, EVENT : Any, SIDE_EFFECT : Any>(
         val initialState: STATE,
+        val finishStates: Set<STATE>?,
         val stateDefinitions: Map<Matcher<STATE, STATE>, State<STATE, EVENT, SIDE_EFFECT>>,
         val onTransitionListeners: List<(Transition<STATE, EVENT, SIDE_EFFECT>) -> Unit>
     ) {
@@ -128,11 +129,16 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
         graph: Graph<STATE, EVENT, SIDE_EFFECT>? = null
     ) {
         private var initialState = graph?.initialState
+        private var finishStates = graph?.finishStates
         private val stateDefinitions = LinkedHashMap(graph?.stateDefinitions ?: emptyMap())
         private val onTransitionListeners = ArrayList(graph?.onTransitionListeners ?: emptyList())
 
         fun initialState(initialState: STATE) {
             this.initialState = initialState
+        }
+
+        fun finalStates(vararg states: STATE) {
+            this.finishStates = setOf(*states)
         }
 
         fun <S : STATE> state(
@@ -155,7 +161,7 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
         }
 
         fun build(): Graph<STATE, EVENT, SIDE_EFFECT> {
-            return Graph(requireNotNull(initialState), stateDefinitions.toMap(), onTransitionListeners.toList())
+            return Graph(requireNotNull(initialState), finishStates, stateDefinitions.toMap(), onTransitionListeners.toList())
         }
 
         inner class StateDefinitionBuilder<S : STATE> {
@@ -226,6 +232,18 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
             init: GraphBuilder<STATE, EVENT, SIDE_EFFECT>.() -> Unit
         ): StateMachine<STATE, EVENT, SIDE_EFFECT> {
             return StateMachine(GraphBuilder(graph).apply(init).build())
+        }
+    }
+
+    fun reset() {
+        synchronized(this) {
+            stateRef.set(graph.initialState)
+        }
+    }
+
+    fun isFinalState() : Boolean{
+        synchronized(this) {
+           return graph.finishStates?.contains(stateRef.get())?: false
         }
     }
 }
