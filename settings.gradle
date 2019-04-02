@@ -1,2 +1,3 @@
 rootProject.name = 'state-machine'
 
+include 'statemachine'
