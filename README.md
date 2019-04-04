@@ -85,6 +85,9 @@ assertThat(transition).isEqualTo(
 then(logger).should().log(ON_MELTED_MESSAGE)
 ~~~
 
+### Visualization
+Thanks to @nvinayshetty, you can visualize your state machines right in the IDE using the [State Arts](https://github.com/nvinayshetty/StateArts) Intellij [plugin](https://plugins.jetbrains.com/plugin/12193-state-art).
+
 ### Download
 
 While we are working on Bintray support, `StateMachine` is available via [JitPack][jitpack].
