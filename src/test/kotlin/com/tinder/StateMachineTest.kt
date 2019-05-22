@@ -2,9 +2,7 @@ package com.tinder
 
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.then
-import org.assertj.core.api.Assertions.assertThat
-import org.assertj.core.api.Assertions.assertThatIllegalArgumentException
-import org.assertj.core.api.Assertions.assertThatIllegalStateException
+import org.assertj.core.api.Assertions.*
 import org.junit.Test
 import org.junit.experimental.runners.Enclosed
 import org.junit.runner.RunWith
@@ -697,6 +695,30 @@ internal class StateMachineTest {
                 }
             }
         }
+
+        class WithIncompleteStateDefinition {
+
+            private val stateMachine = StateMachine.create<String, Int, String> {
+                initialState(STATE_A)
+                state(STATE_A) {
+                    on(EVENT_1) {
+                        transitionTo(STATE_B)
+                    }
+                }
+                // Missing STATE_B definition.
+            }
+
+            @Test
+            fun transition_givenValidEvent_shouldReturnTrue() {
+                // Then
+                try {
+                    stateMachine.transition(EVENT_1)
+                } catch (e: IllegalStateException) {
+                    assertThat(e.message).contains(STATE_B)
+                }
+            }
+        }
+
 
         private companion object {
             private const val STATE_A = "a"
