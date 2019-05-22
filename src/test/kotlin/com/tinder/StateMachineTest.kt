@@ -709,7 +709,7 @@ internal class StateMachineTest {
             }
 
             @Test
-            fun transition_givenValidEvent_shouldReturnTrue() {
+            fun transition_givenMissingDestinationStateDefinition_shouldThrowIllegalStateExceptionWithStateName() {
                 // Then
                 try {
                     stateMachine.transition(EVENT_1)
