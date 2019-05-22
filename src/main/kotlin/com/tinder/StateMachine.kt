@@ -45,6 +45,9 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
                 return Transition.Valid(this, event, toState, sideEffect)
             }
         }
+        if (graph.throwOnInvalidTransition) {
+            error("Unhandled event $event in state $this!")
+        }
         return Transition.Invalid(this, event)
     }
 
@@ -86,6 +89,7 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
 
     data class Graph<STATE : Any, EVENT : Any, SIDE_EFFECT : Any>(
         val initialState: STATE,
+        val throwOnInvalidTransition: Boolean,
         val stateDefinitions: Map<Matcher<STATE, STATE>, State<STATE, EVENT, SIDE_EFFECT>>,
         val onTransitionListeners: List<(Transition<STATE, EVENT, SIDE_EFFECT>) -> Unit>
     ) {
@@ -128,11 +132,16 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
         graph: Graph<STATE, EVENT, SIDE_EFFECT>? = null
     ) {
         private var initialState = graph?.initialState
+        private var throwOnInvalidTransition = false
         private val stateDefinitions = LinkedHashMap(graph?.stateDefinitions ?: emptyMap())
         private val onTransitionListeners = ArrayList(graph?.onTransitionListeners ?: emptyList())
 
         fun initialState(initialState: STATE) {
             this.initialState = initialState
+        }
+
+        fun throwOnInvalidTransition() {
+            this.throwOnInvalidTransition = true
         }
 
         fun <S : STATE> state(
@@ -154,9 +163,12 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
             onTransitionListeners.add(listener)
         }
 
-        fun build(): Graph<STATE, EVENT, SIDE_EFFECT> {
-            return Graph(requireNotNull(initialState), stateDefinitions.toMap(), onTransitionListeners.toList())
-        }
+        fun build(): Graph<STATE, EVENT, SIDE_EFFECT> = Graph(
+            requireNotNull(initialState),
+            throwOnInvalidTransition,
+            stateDefinitions.toMap(),
+            onTransitionListeners.toList()
+        )
 
         inner class StateDefinitionBuilder<S : STATE> {
 

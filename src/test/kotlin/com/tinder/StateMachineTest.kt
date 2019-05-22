@@ -556,6 +556,7 @@ internal class StateMachineTest {
             private val onStateAExitListener2 = mock<String.(Int) -> Unit>()
             private val stateMachine = StateMachine.create<String, Int, String> {
                 initialState(STATE_A)
+                throwOnInvalidTransition() // TODO!
                 state(STATE_A) {
                     onExit(onStateAExitListener1)
                     onExit(onStateAExitListener2)
