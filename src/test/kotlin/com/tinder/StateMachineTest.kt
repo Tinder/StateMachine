@@ -698,7 +698,7 @@ internal class StateMachineTest {
 
         class WithIncompleteStateDefinition {
 
-            private val stateMachine = StateMachine.create<String, Int, String> {
+            private val stateMachine = StateMachine.create<String, Int, Nothing> {
                 initialState(STATE_A)
                 state(STATE_A) {
                     on(EVENT_1) {
