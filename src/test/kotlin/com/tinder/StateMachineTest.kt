@@ -702,7 +702,7 @@ internal class StateMachineTest {
 
                 // Then
                 assertThatIllegalStateException().isThrownBy {
-                    stateMachine.transition(EVENT_3)
+                    stateMachine.transition(EVENT_1)
                 }
                 assertThat(stateMachine.state).isEqualTo(fromState)
 
