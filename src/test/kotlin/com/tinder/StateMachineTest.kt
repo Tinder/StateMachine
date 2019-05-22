@@ -556,7 +556,6 @@ internal class StateMachineTest {
             private val onStateAExitListener2 = mock<String.(Int) -> Unit>()
             private val stateMachine = StateMachine.create<String, Int, String> {
                 initialState(STATE_A)
-                throwOnInvalidTransition() // TODO!
                 state(STATE_A) {
                     onExit(onStateAExitListener1)
                     onExit(onStateAExitListener2)
@@ -685,6 +684,28 @@ internal class StateMachineTest {
                     .isThrownBy {
                         stateMachine.transition(EVENT_4)
                     }
+            }
+        }
+
+        class ThrowingOnInvalidTransition {
+
+            private val stateMachine = StateMachine.create<String, Int, String> {
+                initialState(STATE_A)
+                throwOnInvalidTransition()
+                state(STATE_A) {}
+            }
+
+            @Test
+            fun transition_givenInvalidEvent_shouldThrowIllegalStateException() {
+                // When
+                val fromState = stateMachine.state
+
+                // Then
+                assertThatIllegalStateException().isThrownBy {
+                    stateMachine.transition(EVENT_3)
+                }
+                assertThat(stateMachine.state).isEqualTo(fromState)
+
             }
         }
 
