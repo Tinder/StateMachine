@@ -2,7 +2,9 @@ package com.tinder
 
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.then
-import org.assertj.core.api.Assertions.*
+import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatIllegalArgumentException
+import org.assertj.core.api.Assertions.assertThatIllegalStateException
 import org.junit.Test
 import org.junit.experimental.runners.Enclosed
 import org.junit.runner.RunWith
