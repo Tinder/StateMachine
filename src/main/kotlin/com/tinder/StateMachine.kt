@@ -51,7 +51,7 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
     private fun STATE.getDefinition() = graph.stateDefinitions
         .filter { it.key.matches(this) }
         .map { it.value }
-        .firstOrNull() ?: error("Missing definition for state $this!")
+        .firstOrNull() ?: error("Missing definition for state ${this.javaClass.simpleName}!")
 
     private fun STATE.notifyOnEnter(cause: EVENT) {
         getDefinition().onEnterListeners.forEach { it(this, cause) }

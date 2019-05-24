@@ -713,11 +713,9 @@ internal class StateMachineTest {
             @Test
             fun transition_givenMissingDestinationStateDefinition_shouldThrowIllegalStateExceptionWithStateName() {
                 // Then
-                try {
-                    stateMachine.transition(EVENT_1)
-                } catch (e: IllegalStateException) {
-                    assertThat(e.message).contains(STATE_B)
-                }
+                assertThatIllegalStateException()
+                        .isThrownBy { stateMachine.transition(EVENT_1) }
+                        .withMessage("Missing definition for state ${STATE_B.javaClass.simpleName}!")
             }
         }
 
