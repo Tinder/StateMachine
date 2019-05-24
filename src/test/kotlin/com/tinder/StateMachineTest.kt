@@ -715,7 +715,7 @@ internal class StateMachineTest {
                 // Then
                 assertThatIllegalStateException()
                         .isThrownBy { stateMachine.transition(EVENT_1) }
-                        .withMessage("Missing definition for state ${STATE_B.javaClass.simpleName}!")
+                        .withMessageContaining(STATE_B.javaClass.simpleName)
             }
         }
 
