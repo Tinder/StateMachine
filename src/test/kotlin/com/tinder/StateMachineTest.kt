@@ -714,8 +714,8 @@ internal class StateMachineTest {
             fun transition_givenMissingDestinationStateDefinition_shouldThrowIllegalStateExceptionWithStateName() {
                 // Then
                 assertThatIllegalStateException()
-                        .isThrownBy { stateMachine.transition(EVENT_1) }
-                        .withMessageContaining(STATE_B.javaClass.simpleName)
+                    .isThrownBy { stateMachine.transition(EVENT_1) }
+                    .withMessageContaining(STATE_B.javaClass.simpleName)
             }
         }
 
