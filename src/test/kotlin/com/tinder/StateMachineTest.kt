@@ -719,7 +719,6 @@ internal class StateMachineTest {
             }
         }
 
-
         private companion object {
             private const val STATE_A = "a"
             private const val STATE_B = "b"
