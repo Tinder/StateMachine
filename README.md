@@ -96,7 +96,7 @@ Snapshots of the development version are available in [Sonatype's `snapshots` re
 ##### Maven:
 ```xml
 <dependency>
-    <groupId>com.github.tinder</groupId>
+    <groupId>com.tinder.statemachine</groupId>
     <artifactId>statemachine</artifactId>
     <version>0.2.0</version>
 </dependency>
@@ -104,7 +104,7 @@ Snapshots of the development version are available in [Sonatype's `snapshots` re
 
 ##### Gradle:
 ```groovy
-implementation 'com.github.tinder:statemachine:0.2.0'
+implementation 'com.tinder.statemachine:statemachine:0.2.0'
 ```
 
 ### License
