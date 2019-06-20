@@ -1,7 +1,6 @@
 # StateMachine
 
 [![CircleCI](https://circleci.com/gh/Tinder/StateMachine.svg?style=svg)](https://circleci.com/gh/Tinder/StateMachine)
-[![Release](https://jitpack.io/v/tinder/statemachine.svg)](https://jitpack.io/#tinder/statemachine)
 
 A Kotlin DSL for finite state machine.
 
@@ -90,29 +89,22 @@ Thanks to @nvinayshetty, you can visualize your state machines right in the IDE 
 
 ### Download
 
-While we are working on Bintray support, `StateMachine` is available via [JitPack][jitpack].
+`StateMachine` is available in Maven Central.
+
+Snapshots of the development version are available in [Sonatype's `snapshots` repository][snap].
 
 ##### Maven:
 ```xml
-<repository>
-    <id>jitpack.io</id>
-    <url>https://jitpack.io</url>
-</repository>
 <dependency>
-    <groupId>com.github.tinder</groupId>
+    <groupId>com.tinder.statemachine</groupId>
     <artifactId>statemachine</artifactId>
-    <version>0.1.2</version>
+    <version>0.2.0</version>
 </dependency>
 ```
 
 ##### Gradle:
 ```groovy
-repositories {
-    // ...
-    maven { url "https://jitpack.io" }
-}
-
-implementation 'com.github.tinder:statemachine:0.1.2'
+implementation 'com.tinder.statemachine:statemachine:0.2.0'
 ```
 
 ### License
@@ -144,4 +136,4 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ~~~
 
 [latest-jar]: https://tinder.com/
-[jitpack]: https://jitpack.io/#tinder/statemachine
+[snap]: https://oss.sonatype.org/content/repositories/snapshots/
