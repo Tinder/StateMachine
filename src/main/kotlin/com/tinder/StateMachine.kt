@@ -51,6 +51,7 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
     private fun STATE.getDefinition() = graph.stateDefinitions
         .filter { it.key.matches(this) }
         .map { it.value }
+        .also { if (it.isEmpty()) error("Missing definition for state ${this.javaClass.simpleName}!") }
         .fold(Graph.State<STATE, EVENT, SIDE_EFFECT>()) { acc, state ->
             acc.apply {
                 onEnterListeners.addAll(state.onEnterListeners)
