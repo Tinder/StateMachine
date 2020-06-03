@@ -719,6 +719,83 @@ internal class StateMachineTest {
             }
         }
 
+        class WithSplitStateDefinition {
+            private val firstDefinitionOnEnterListener = mock<String.(Int) -> Unit>()
+            private val secondDefinitionOnEnterListener = mock<String.(Int) -> Unit>()
+            private val firstDefinitionOnExitListener = mock<String.(Int) -> Unit>()
+            private val secondDefinitionOnExitListener = mock<String.(Int) -> Unit>()
+
+            private val stateMachine = StateMachine.create<String, Int, Nothing> {
+                initialState(STATE_A)
+
+                state(STATE_A) {
+                    on(EVENT_1) {
+                        transitionTo(STATE_B)
+                    }
+
+                    onExit(firstDefinitionOnExitListener)
+                }
+
+                state(STATE_A) {
+                    on(EVENT_2) {
+                        transitionTo(STATE_B)
+                    }
+
+                    onExit(secondDefinitionOnExitListener)
+                }
+
+                state(STATE_B) {
+                    onEnter(firstDefinitionOnEnterListener)
+                }
+
+                state(STATE_B) {
+                    onEnter(secondDefinitionOnEnterListener)
+                }
+            }
+
+            @Test
+            fun transition_givenFirstDefinitionEvent_shouldReturnValidTransition() {
+                // When
+                val transition = stateMachine.transition(EVENT_1)
+
+                // Then
+                assertThat(transition).isEqualTo(
+                    StateMachine.Transition.Valid<String, Int, String>(STATE_A, EVENT_1, STATE_B, null)
+                )
+            }
+
+            @Test
+            fun transition_givenSecondDefinitionEvent_shouldReturnValidTransition() {
+                // When
+                val transition = stateMachine.transition(EVENT_2)
+
+                // Then
+                assertThat(transition).isEqualTo(
+                    StateMachine.Transition.Valid<String, Int, String>(STATE_A, EVENT_2, STATE_B, null)
+                )
+            }
+
+            @Test
+            fun transition_givenValidEvent_shouldTriggerOnExitListeners() {
+                // When
+                stateMachine.transition(EVENT_1)
+
+                // Then
+                then(firstDefinitionOnExitListener).should().invoke(STATE_A, EVENT_1)
+                then(secondDefinitionOnExitListener).should().invoke(STATE_A, EVENT_1)
+            }
+
+            @Test
+            fun transition_givenValidEvent_shouldTriggerOnEnterListeners() {
+                // When
+                stateMachine.transition(EVENT_1)
+
+                // Then
+                then(firstDefinitionOnEnterListener).should().invoke(STATE_B, EVENT_1)
+                then(secondDefinitionOnEnterListener).should().invoke(STATE_B, EVENT_1)
+            }
+        }
+
         private companion object {
             private const val STATE_A = "a"
             private const val STATE_B = "b"
@@ -733,5 +810,4 @@ internal class StateMachineTest {
             private const val SIDE_EFFECT_1 = "alpha"
         }
     }
-
 }
