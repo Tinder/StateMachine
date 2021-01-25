@@ -175,12 +175,10 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
             }
 
             inner class TransitionBuilder<E: EVENT>(val currentState: S, val event: E) {
-                fun transitionTo(state: STATE, sideEffect: SIDE_EFFECT) = transitionTo(state, listOf(sideEffect))
-                fun transitionTo(state: STATE, sideEffects: Iterable<SIDE_EFFECT> = emptyList()) =
-                        Graph.State.TransitionTo(state, sideEffects)
+                fun transitionTo(state: STATE, vararg sideEffect: SIDE_EFFECT) =
+                        Graph.State.TransitionTo(state, sideEffect.asIterable())
 
-                fun dontTransition(sideEffects: Iterable<SIDE_EFFECT> = emptyList()) = transitionTo(currentState, sideEffects)
-                fun dontTransition(sideEffects: SIDE_EFFECT) = transitionTo(currentState, listOf(sideEffects))
+                fun dontTransition(vararg sideEffect: SIDE_EFFECT) = transitionTo(currentState, *sideEffect)
             }
 
             private val stateDefinition = Graph.State<STATE, EVENT, SIDE_EFFECT>()
