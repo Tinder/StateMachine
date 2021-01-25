@@ -174,6 +174,15 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
                 }
             }
 
+            inner class TransitionBuilder<E: EVENT>(val currentState: S, val event: E) {
+                fun transitionTo(state: STATE, sideEffect: SIDE_EFFECT) = transitionTo(state, listOf(sideEffect))
+                fun transitionTo(state: STATE, sideEffects: Iterable<SIDE_EFFECT> = emptyList()) =
+                        Graph.State.TransitionTo(state, sideEffects)
+
+                fun dontTransition(sideEffects: Iterable<SIDE_EFFECT> = emptyList()) = transitionTo(currentState, sideEffects)
+                fun dontTransition(sideEffects: SIDE_EFFECT) = transitionTo(currentState, listOf(sideEffects))
+            }
+
             private val stateDefinition = Graph.State<STATE, EVENT, SIDE_EFFECT>()
 
             inline fun <reified E : EVENT> any(): Matcher<EVENT, E> = Matcher.any()
@@ -182,23 +191,23 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
 
             fun <E : EVENT> on(
                 eventMatcher: Matcher<EVENT, E>,
-                createTransitionTo: S.(E) -> Graph.State.TransitionTo<STATE, SIDE_EFFECT>
+                createTransitionTo: TransitionBuilder<E>.() -> Graph.State.TransitionTo<STATE, SIDE_EFFECT>
             ) {
                 stateDefinition.transitions[eventMatcher] = { state, event ->
                     @Suppress("UNCHECKED_CAST")
-                    createTransitionTo((state as S), event as E)
+                    createTransitionTo(TransitionBuilder(state as S, event as E))
                 }
             }
 
             inline fun <reified E : EVENT> on(
-                noinline createTransitionTo: S.(E) -> Graph.State.TransitionTo<STATE, SIDE_EFFECT>
+                noinline createTransitionTo: TransitionBuilder<E>.() -> Graph.State.TransitionTo<STATE, SIDE_EFFECT>
             ) {
                 return on(any(), createTransitionTo)
             }
 
             inline fun <reified E : EVENT> on(
                 event: E,
-                noinline createTransitionTo: S.(E) -> Graph.State.TransitionTo<STATE, SIDE_EFFECT>
+                noinline createTransitionTo: TransitionBuilder<E>.() -> Graph.State.TransitionTo<STATE, SIDE_EFFECT>
             ) {
                 return on(eq(event), createTransitionTo)
             }
@@ -222,13 +231,6 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
             }
 
             fun build() = stateDefinition
-
-            fun transitionTo(state: STATE, sideEffect: SIDE_EFFECT) = transitionTo(state, listOf(sideEffect))
-            fun transitionTo(state: STATE, sideEffects: Iterable<SIDE_EFFECT> = emptyList()) =
-                Graph.State.TransitionTo(state, sideEffects)
-
-            fun S.dontTransition(sideEffects: Iterable<SIDE_EFFECT> = emptyList()) = transitionTo(this, sideEffects)
-            fun S.dontTransition(sideEffects: SIDE_EFFECT) = transitionTo(this, listOf(sideEffects))
         }
     }
 
