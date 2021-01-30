@@ -1,33 +1,67 @@
 package com.tinder
 
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.reflect.KClass
+import kotlin.reflect.full.isSubclassOf
 
-class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private constructor(
+class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> constructor(
     private val graph: Graph<STATE, EVENT, SIDE_EFFECT>
 ) {
+    data class CurrentState<out STATE : Any>(val currentState: STATE, val history: Map<out KClass<out STATE>, STATE>) {
+        constructor(currentState: STATE, vararg history: Pair<KClass<out STATE>, STATE>) : this(
+            currentState,
+            history.toMap()
+        )
+    }
 
-    private val stateRef = AtomicReference<STATE>(graph.initialState)
+    private val stateRef = AtomicReference<CurrentState<STATE>>(graph.initialState)
 
-    val state: STATE
+    val state: CurrentState<STATE>
         get() = stateRef.get()
 
     fun transition(event: EVENT): Transition<STATE, EVENT, SIDE_EFFECT> {
         val transition = synchronized(this) {
-            val fromState = stateRef.get()
-            val transition = fromState.getTransition(event)
+            val currentState = stateRef.get()
+            val fromState = currentState.currentState
+            val transition = fromState.getTransition(currentState, event)
             if (transition is Transition.Valid) {
-                stateRef.set(transition.toState)
+                val newHistoryEntries = transition
+                    .exited
+                    .filter {
+                        it.stateClass.isAbstract || it.stateClass.isSealed
+                    }
+                    .map {
+                        it.stateClass to transition.fromState
+                    }
+                    .toMap()
+                val obsoleteHistoryEntries = transition
+                    .entered
+                    .filter {
+                        it.stateClass.isAbstract || it.stateClass.isSealed
+                    }
+                    .map {
+                        it.stateClass
+                    }
+
+                stateRef.set(
+                    CurrentState(
+                        transition.toState,
+                        currentState.history - obsoleteHistoryEntries + newHistoryEntries
+                    )
+                )
             }
             transition
         }
         return when (transition) {
             is Transition.Valid -> {
                 val sideEffects = with(transition) {
-                    with(fromState) {
-                        notifyOnExit(event)
-                    } + sideEffects + with(toState) {
-                        notifyOnEnter(event)
+                    val exitSideEffects = exited.flatMap {
+                        it.onExitListeners.flatMap { it(fromState, event, toState) }
                     }
+                    val enteredSideEffects = entered.flatMap {
+                        it.onEnterListeners.flatMap { it(toState, event, fromState) }
+                    }
+                    exitSideEffects + sideEffects + enteredSideEffects
                 }
                 transition.copy(sideEffects = sideEffects)
             }
@@ -41,77 +75,131 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
         return create(graph.copy(initialState = state), init)
     }
 
-    private fun STATE.getTransition(event: EVENT): Transition<STATE, EVENT, SIDE_EFFECT> {
-        for ((eventMatcher, createTransitionTo) in getDefinition().transitions) {
-            if (eventMatcher.matches(event)) {
-                val (toState, sideEffects) = createTransitionTo(this, event)
-                return Transition.Valid(this, event, toState, sideEffects)
+    private fun STATE.getTransition(
+        currentState: CurrentState<STATE>,
+        event: EVENT
+    ): Transition<STATE, EVENT, SIDE_EFFECT> {
+        val matchingFrom = getDefinitions()
+        matchingFrom.forEach {
+            for ((eventMatcher, createTransitionTo) in it.transitions) {
+                if (eventMatcher.matches(event)) {
+                    val (toState, sideEffects) = when (val transition = createTransitionTo(this, event)) {
+                        is Graph.State.TransitionTo.TransitionToState -> transition
+                        is Graph.State.TransitionTo.TransitionToGroup -> getTransitionToGroup(
+                            it,
+                            currentState,
+                            transition
+                        )
+                    }
+                    val (entered, exited) = getEnteredAndExitedStates(matchingFrom, toState.getDefinitions())
+                    return Transition.Valid(
+                        this,
+                        event,
+                        toState,
+                        exited,
+                        entered,
+                        sideEffects
+                    )
+                }
             }
         }
+
         return Transition.Invalid(this, event)
     }
 
-    private fun STATE.getDefinition() = graph.stateDefinitions
-        .filter { it.key.matches(this) }
+    private fun getEnteredAndExitedStates(
+        matchingFrom: List<Graph.State<STATE, EVENT, SIDE_EFFECT>>,
+        matchingTo: List<Graph.State<STATE, EVENT, SIDE_EFFECT>>
+    ): Pair<List<Graph.State<STATE, EVENT, SIDE_EFFECT>>, List<Graph.State<STATE, EVENT, SIDE_EFFECT>>> {
+        val stateHierarchyComparer = Comparator<Graph.State<STATE, *, *>> { a, b -> if (a.isSubStateOf(b)) -1 else 1 }
+        val matchingFromSorted = matchingFrom.sortedWith(stateHierarchyComparer)
+        val matchingToSorted = matchingTo.sortedWith(stateHierarchyComparer.reversed())
+
+        if (matchingFrom == matchingTo) {
+            return matchingFromSorted.take(1) to matchingFromSorted.take(1)
+        }
+        val exited = matchingFromSorted - matchingToSorted
+        val entered = matchingToSorted - matchingFromSorted
+
+        return entered to exited
+    }
+
+    private fun getTransitionToGroup(
+        matchedState: Graph.State<STATE, EVENT, SIDE_EFFECT>,
+        currentState: CurrentState<STATE>,
+        transition: Graph.State.TransitionTo.TransitionToGroup<out STATE, out SIDE_EFFECT>
+    ): Graph.State.TransitionTo.TransitionToState<STATE, SIDE_EFFECT> {
+        val historyEntry = currentState.history[transition.toGroup]
+            ?: matchedState.initialState?.invoke()
+            ?: error("no history entry and no initial state defined")
+        return Graph.State.TransitionTo.TransitionToState(historyEntry, transition.sideEffects)
+    }
+
+    private fun STATE.getDefinitions(): List<Graph.State<STATE, EVENT, SIDE_EFFECT>> = graph
+        .stateDefinitions
+        .filter { it.key.isInstance(this) }
         .map { it.value }
-        .firstOrNull() ?: error("Missing definition for state ${this.javaClass.simpleName}!")
-
-    private fun STATE.notifyOnEnter(cause: EVENT): Iterable<SIDE_EFFECT> =
-            getDefinition().onEnterListeners.flatMap { it(this, cause) }
-
-    private fun STATE.notifyOnExit(cause: EVENT): Iterable<SIDE_EFFECT> =
-            getDefinition().onExitListeners.flatMap { it(this, cause) }
 
     private fun Transition<STATE, EVENT, SIDE_EFFECT>.notifyOnTransition() {
         graph.onTransitionListeners.forEach { it(this) }
     }
 
-    @Suppress("UNUSED")
-    sealed class Transition<out STATE : Any, out EVENT : Any, out SIDE_EFFECT : Any> {
+    sealed class Transition<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> {
         abstract val fromState: STATE
         abstract val event: EVENT
 
-        data class Valid<out STATE : Any, out EVENT : Any, out SIDE_EFFECT : Any> internal constructor(
+        data class Valid<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> internal constructor(
             override val fromState: STATE,
             override val event: EVENT,
             val toState: STATE,
+            val exited: List<Graph.State<STATE, EVENT, SIDE_EFFECT>>,
+            val entered: List<Graph.State<STATE, EVENT, SIDE_EFFECT>>,
             val sideEffects: Iterable<SIDE_EFFECT> = emptyList()
-        ) : Transition<STATE, EVENT, SIDE_EFFECT>() {
-            internal constructor(
-                    fromState: STATE,
-                    event: EVENT,
-                    toState: STATE,
-                    sideEffect: SIDE_EFFECT
-            ) : this(fromState, event, toState, listOf(sideEffect))
-        }
+        ) : Transition<STATE, EVENT, SIDE_EFFECT>()
 
-        data class Invalid<out STATE : Any, out EVENT : Any, out SIDE_EFFECT : Any> internal constructor(
+        data class Invalid<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> internal constructor(
             override val fromState: STATE,
             override val event: EVENT
         ) : Transition<STATE, EVENT, SIDE_EFFECT>()
     }
 
     data class Graph<STATE : Any, EVENT : Any, SIDE_EFFECT : Any>(
-        val initialState: STATE,
-        val stateDefinitions: Map<Matcher<STATE, STATE>, State<STATE, EVENT, SIDE_EFFECT>>,
+        val initialState: CurrentState<STATE>,
+        val stateDefinitions: Map<KClass<out STATE>, State<STATE, EVENT, SIDE_EFFECT>>,
         val onTransitionListeners: List<(Transition<STATE, EVENT, SIDE_EFFECT>) -> Unit>
     ) {
+        class State<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> internal constructor(val stateClass: KClass<out STATE>) {
+            val onEnterListeners = mutableListOf<(STATE, EVENT, STATE) -> Iterable<SIDE_EFFECT>>()
+            val onExitListeners = mutableListOf<(STATE, EVENT, STATE) -> Iterable<SIDE_EFFECT>>()
+            val transitions =
+                linkedMapOf<Matcher<EVENT, EVENT>, (STATE, EVENT) -> TransitionTo<out STATE, out SIDE_EFFECT>>()
+            var initialState: (() -> STATE)? = null
 
-        class State<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> internal constructor() {
-            val onEnterListeners = mutableListOf<(STATE, EVENT) -> Iterable<SIDE_EFFECT>>()
-            val onExitListeners = mutableListOf<(STATE, EVENT) -> Iterable<SIDE_EFFECT>>()
-            val transitions = linkedMapOf<Matcher<EVENT, EVENT>, (STATE, EVENT) -> TransitionTo<STATE, SIDE_EFFECT>>()
+            fun isSubStateOf(other: State<STATE, *, *>) = stateClass.isSubclassOf(other.stateClass)
+            fun isState(stateClass: KClass<out STATE>) = this.stateClass == stateClass
 
-            data class TransitionTo<out STATE : Any, out SIDE_EFFECT : Any> internal constructor(
-                val toState: STATE,
-                val sideEffects: Iterable<SIDE_EFFECT>
-            )
+            sealed class TransitionTo<STATE : Any, SIDE_EFFECT : Any> {
+                data class TransitionToState<STATE : Any, SIDE_EFFECT : Any>(
+                    val toState: STATE,
+                    val sideEffects: Iterable<SIDE_EFFECT>
+                ) : TransitionTo<STATE, SIDE_EFFECT>()
+
+                data class TransitionToGroup<STATE : Any, SIDE_EFFECT : Any>(
+                    val toGroup: KClass<STATE>,
+                    val sideEffects: Iterable<SIDE_EFFECT>
+                ) : TransitionTo<STATE, SIDE_EFFECT>() {
+                    init {
+                        require(toGroup.isAbstract || toGroup.isSealed)
+                    }
+                }
+            }
         }
     }
 
-    class Matcher<T : Any, out R : T> private constructor(private val clazz: Class<R>) {
-
-        private val predicates = mutableListOf<(T) -> Boolean>({ clazz.isInstance(it) })
+    class Matcher<T : Any, out R : T> private constructor(
+        private val clazz: KClass<R>,
+        private val predicates: MutableList<(T) -> Boolean> = mutableListOf({ it -> clazz.isInstance(it) })
+    ) {
 
         fun where(predicate: R.() -> Boolean): Matcher<T, R> = apply {
             predicates.add {
@@ -123,9 +211,9 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
         fun matches(value: T) = predicates.all { it(value) }
 
         companion object {
-            fun <T : Any, R : T> any(clazz: Class<R>): Matcher<T, R> = Matcher(clazz)
+            fun <T : Any, R : T> any(clazz: KClass<R>): Matcher<T, R> = Matcher(clazz)
 
-            inline fun <T : Any, reified R : T> any(): Matcher<T, R> = any(R::class.java)
+            inline fun <T : Any, reified R : T> any(): Matcher<T, R> = any(R::class)
 
             inline fun <T : Any, reified R : T> eq(value: R): Matcher<T, R> = any<T, R>().where { this == value }
         }
@@ -138,23 +226,23 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
         private val stateDefinitions = LinkedHashMap(graph?.stateDefinitions ?: emptyMap())
         private val onTransitionListeners = ArrayList(graph?.onTransitionListeners ?: emptyList())
 
-        fun initialState(initialState: STATE) {
+        fun initialState(initialState: STATE, history: Map<out KClass<out STATE>, STATE> = emptyMap()) {
+            initialState(CurrentState(initialState, history))
+        }
+
+        fun initialState(initialState: CurrentState<STATE>) {
             this.initialState = initialState
         }
 
         fun <S : STATE> state(
-            stateMatcher: Matcher<STATE, S>,
+            stateClass: KClass<S>,
             init: StateDefinitionBuilder<S>.() -> Unit
         ) {
-            stateDefinitions[stateMatcher] = StateDefinitionBuilder<S>().apply(init).build()
+            stateDefinitions[stateClass] = StateDefinitionBuilder(stateClass).apply(init).build()
         }
 
         inline fun <reified S : STATE> state(noinline init: StateDefinitionBuilder<S>.() -> Unit) {
-            state(Matcher.any(), init)
-        }
-
-        inline fun <reified S : STATE> state(state: S, noinline init: StateDefinitionBuilder<S>.() -> Unit) {
-            state(Matcher.eq<STATE, S>(state), init)
+            state(S::class, init)
         }
 
         fun onTransition(listener: (Transition<STATE, EVENT, SIDE_EFFECT>) -> Unit) {
@@ -165,8 +253,8 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
             return Graph(requireNotNull(initialState), stateDefinitions.toMap(), onTransitionListeners.toList())
         }
 
-        inner class StateDefinitionBuilder<S : STATE> {
-            inner class EventHandlerBuilder(val state: S, val cause: EVENT) {
+        inner class StateDefinitionBuilder<S : STATE>(stateClass: KClass<S>) {
+            abstract inner class EventHandlerBuilder(val state: S, val cause: EVENT) {
                 internal val sideEffects = mutableListOf<SIDE_EFFECT>()
 
                 fun emit(vararg sideEffect: SIDE_EFFECT) {
@@ -174,14 +262,23 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
                 }
             }
 
-            inner class TransitionBuilder<E: EVENT>(val currentState: S, val event: E) {
+            inner class OnEnterEventHandlerBuilder(state: S, cause: EVENT, val previousState: STATE) :
+                EventHandlerBuilder(state, cause)
+
+            inner class OnExitEventHandlerBuilder(state: S, cause: EVENT, val newState: STATE) :
+                EventHandlerBuilder(state, cause)
+
+            inner class TransitionBuilder<E : EVENT>(val currentState: S, val event: E) {
                 fun transitionTo(state: STATE, vararg sideEffect: SIDE_EFFECT) =
-                        Graph.State.TransitionTo(state, sideEffect.asIterable())
+                    Graph.State.TransitionTo.TransitionToState(state, sideEffect.asIterable())
+
+                inline fun <reified S : STATE> transitionTo(vararg sideEffect: SIDE_EFFECT) =
+                    Graph.State.TransitionTo.TransitionToGroup(S::class, sideEffect.asIterable())
 
                 fun dontTransition(vararg sideEffect: SIDE_EFFECT) = transitionTo(currentState, *sideEffect)
             }
 
-            private val stateDefinition = Graph.State<STATE, EVENT, SIDE_EFFECT>()
+            private val stateDefinition = Graph.State<STATE, EVENT, SIDE_EFFECT>(stateClass)
 
             inline fun <reified E : EVENT> any(): Matcher<EVENT, E> = Matcher.any()
 
@@ -189,7 +286,7 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
 
             fun <E : EVENT> on(
                 eventMatcher: Matcher<EVENT, E>,
-                createTransitionTo: TransitionBuilder<E>.() -> Graph.State.TransitionTo<STATE, SIDE_EFFECT>
+                createTransitionTo: TransitionBuilder<E>.() -> Graph.State.TransitionTo<out STATE, out SIDE_EFFECT>
             ) {
                 stateDefinition.transitions[eventMatcher] = { state, event ->
                     @Suppress("UNCHECKED_CAST")
@@ -198,33 +295,33 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
             }
 
             inline fun <reified E : EVENT> on(
-                noinline createTransitionTo: TransitionBuilder<E>.() -> Graph.State.TransitionTo<STATE, SIDE_EFFECT>
+                noinline createTransitionTo: TransitionBuilder<E>.() -> Graph.State.TransitionTo<out STATE, out SIDE_EFFECT>
             ) {
                 return on(any(), createTransitionTo)
             }
 
             inline fun <reified E : EVENT> on(
                 event: E,
-                noinline createTransitionTo: TransitionBuilder<E>.() -> Graph.State.TransitionTo<STATE, SIDE_EFFECT>
+                noinline createTransitionTo: TransitionBuilder<E>.() -> Graph.State.TransitionTo<out STATE, out SIDE_EFFECT>
             ) {
                 return on(eq(event), createTransitionTo)
             }
 
-            fun onEnter(listener: EventHandlerBuilder.() -> Unit) = with(stateDefinition) {
-                onEnterListeners.add { state, cause ->
+            fun onEnter(listener: OnEnterEventHandlerBuilder.() -> Unit) = with(stateDefinition) {
+                onEnterListeners.add { state, cause, fromState ->
                     @Suppress("UNCHECKED_CAST")
-                    EventHandlerBuilder(state as S, cause)
-                            .apply(listener)
-                            .sideEffects
+                    OnEnterEventHandlerBuilder(state as S, cause, fromState)
+                        .apply(listener)
+                        .sideEffects
                 }
             }
 
-            fun onExit(listener: EventHandlerBuilder.() -> Unit) = with(stateDefinition) {
-                onExitListeners.add { state, cause ->
+            fun onExit(listener: OnExitEventHandlerBuilder.() -> Unit) = with(stateDefinition) {
+                onExitListeners.add { state, cause, toState ->
                     @Suppress("UNCHECKED_CAST")
-                    EventHandlerBuilder(state as S, cause)
-                            .apply(listener)
-                            .sideEffects
+                    OnExitEventHandlerBuilder(state as S, cause, toState)
+                        .apply(listener)
+                        .sideEffects
                 }
             }
 
