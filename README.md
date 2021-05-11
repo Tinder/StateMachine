@@ -2,17 +2,20 @@
 
 [![CircleCI](https://circleci.com/gh/Tinder/StateMachine.svg?style=svg)](https://circleci.com/gh/Tinder/StateMachine)
 
-A Kotlin DSL for finite state machine.
+A state machine library in Kotlin and Swift.
 
 `StateMachine` is used in [Scarlet](https://github.com/Tinder/Scarlet)
 
-### Usage
+## Usage
 
 In this example, we create a `StateMachine` from the following state diagram.
 
 ![State Diagram](./example/activity-diagram.png)
 
-Define states, event, and side effects:
+### Kotlin
+
+Define states, events and side effects:
+
 ~~~kotlin
 sealed class State {
     object Solid : State()
@@ -35,7 +38,8 @@ sealed class SideEffect {
 }
 ~~~
 
-Declare state transitions:
+Initialize state machine and declare state transitions:
+
 ~~~kotlin
 val stateMachine = StateMachine.create<State, Event, SideEffect> {
     initialState(State.Solid)
@@ -70,6 +74,7 @@ val stateMachine = StateMachine.create<State, Event, SideEffect> {
 ~~~
 
 Perform state transitions:
+
 ~~~kotlin
 assertThat(stateMachine.state).isEqualTo(Solid)
 
@@ -84,16 +89,107 @@ assertThat(transition).isEqualTo(
 then(logger).should().log(ON_MELTED_MESSAGE)
 ~~~
 
-### Visualization
-Thanks to @nvinayshetty, you can visualize your state machines right in the IDE using the [State Arts](https://github.com/nvinayshetty/StateArts) Intellij [plugin](https://plugins.jetbrains.com/plugin/12193-state-art).
+### Swift
 
-### Download
+Inherit `StateMachineBuilder` to gain access to the DSL builder methods:
+
+```swift
+class MyExample: StateMachineBuilder {
+
+    ... state machine implementation ...
+}
+```
+
+Define states, events and side effects:
+
+```swift
+enum State: StateMachineHashable {
+    case solid, liquid, gas
+}
+
+enum Event: StateMachineHashable {
+    case melt, freeze, vaporize, condense
+}
+
+enum SideEffect {
+    case logMelted, logFrozen, logVaporized, logCondensed
+}
+```
+
+Initialize state machine and declare state transitions:
+
+```swift
+let stateMachine = MatterStateMachine {
+    initialState(.solid)
+    state(.solid) {
+        on(.melt) {
+            transition(to: .liquid, emit: .logMelted)
+        }
+    }
+    state(.liquid) {
+        on(.freeze) {
+            transition(to: .solid, emit: .logFrozen)
+        }
+        on(.vaporize) {
+            transition(to: .gas, emit: .logVaporized)
+        }
+    }
+    state(.gas) {
+        on(.condense) {
+            transition(to: .liquid, emit: .logCondensed)
+        }
+    }
+    onTransition {
+        guard case let .success(transition) = $0, let sideEffect = transition.sideEffect else { return }
+        switch sideEffect {
+        case .logMelted: logger.log(Message.melted)
+        case .logFrozen: logger.log(Message.frozen)
+        case .logVaporized: logger.log(Message.vaporized)
+        case .logCondensed: logger.log(Message.condensed)
+        }
+    }
+}
+```
+
+Perform state transitions:
+
+```swift
+expect(stateMachine.state).to(equal(.solid))
+
+// When
+let transition = try stateMachine.transition(.melt)
+
+// Then
+expect(stateMachine.state).to(equal(.liquid))
+expect(transition).to(equal(
+    StateMachine.Transition.Valid(fromState: .solid, event: .melt, toState: .liquid, sideEffect: .logMelted))
+)
+expect(logger).to(log(Message.melted))
+```
+
+## Examples
+
+### Matter State Machine
+
+- [Kotlin](https://github.com/Tinder/StateMachine/blob/9ba046313703f37db749466b4a3504caaea2888c/src/test/kotlin/com/tinder/StateMachineTest.kt#L18-L47)
+- [Swift](https://github.com/Tinder/StateMachine/blob/9ba046313703f37db749466b4a3504caaea2888c/Swift/Tests/StateMachineTests/StateMachine_Matter_Tests.swift#L40-L69)
+
+### Turnstile State Machine
+
+- [Kotlin](https://github.com/Tinder/StateMachine/blob/9ba046313703f37db749466b4a3504caaea2888c/src/test/kotlin/com/tinder/StateMachineTest.kt#L157-L185)
+- [Swift](https://github.com/Tinder/StateMachine/blob/9ba046313703f37db749466b4a3504caaea2888c/Swift/Tests/StateMachineTests/StateMachine_Turnstile_Tests.swift#L36-L64)
+
+NOTE: Due to Swift using enumerations (as opposed to sealed classes in Kotlin), 
+any Swift enumeration taking advantage of associated values will require [additional boilerplate implementation](https://github.com/Tinder/StateMachine/blob/9ba046313703f37db749466b4a3504caaea2888c/Swift/Tests/StateMachineTests/StateMachine_Turnstile_Tests.swift#L198-L260).
+
+## Kotlin Download
 
 `StateMachine` is available in Maven Central.
 
 Snapshots of the development version are available in [Sonatype's `snapshots` repository][snap].
 
-##### Maven:
+### Maven
+
 ```xml
 <dependency>
     <groupId>com.tinder.statemachine</groupId>
@@ -102,12 +198,33 @@ Snapshots of the development version are available in [Sonatype's `snapshots` re
 </dependency>
 ```
 
-##### Gradle:
+### Gradle
+
 ```groovy
 implementation 'com.tinder.statemachine:statemachine:0.2.0'
 ```
 
-### License
+## Swift Installation
+
+### Swift Package Manager
+
+```
+dependencies: [
+    .package(url: "https://github.com/Tinder/StateMachine.git", from: "0.0.1")
+]
+```
+
+### Cocoapods
+
+```
+pod 'StateMachine', :git => 'https://github.com/Tinder/StateMachine.git'
+```
+
+## Visualization
+
+Thanks to @nvinayshetty, you can visualize your state machines right in the IDE using the [State Arts](https://github.com/nvinayshetty/StateArts) Intellij [plugin](https://plugins.jetbrains.com/plugin/12193-state-art).
+
+## License
 ~~~
 Copyright (c) 2018, Match Group, LLC
 All rights reserved.

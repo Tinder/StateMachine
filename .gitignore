@@ -62,3 +62,12 @@ google-services.json
 freeline.py
 freeline/
 freeline_project_description.json
+
+# SPM
+.swiftpm/
+.build/
+Packages/
+
+# Xcode
+*.xcworkspace/
+*.xcodeproj/
