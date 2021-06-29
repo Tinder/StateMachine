@@ -1,59 +1,56 @@
 package com.tinder
 
-import java.util.concurrent.atomic.AtomicReference
 import kotlin.reflect.KClass
 import kotlin.reflect.full.isSubclassOf
 
 class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private constructor(
     private val graph: Graph<STATE, EVENT, SIDE_EFFECT>,
-    val state: CurrentState<STATE> = graph.initialState
+    state: StateMachine<STATE, EVENT, SIDE_EFFECT>.StateWithHistory? = null
 ) {
-    data class CurrentState<out STATE : Any>(val currentState: STATE, val history: Map<out KClass<out STATE>, STATE>) {
-        constructor(currentState: STATE, vararg history: Pair<KClass<out STATE>, STATE>) : this(
-            currentState,
-            history.toMap()
-        )
+    val state: StateWithHistory = state ?: StateWithHistory(graph.initialState, emptyMap())
+
+    inner class StateWithHistory internal constructor(
+        val state: STATE,
+        val history: Map<out KClass<out STATE>, STATE>
+    ) {
+        fun update(newState: STATE): StateWithHistory {
+            val (entered, exited) = graph.getEnteredAndExitedStates(state, newState)
+
+            val newHistoryEntries = exited
+                .filter {
+                    it.stateClass.isAbstract || it.stateClass.isSealed
+                }
+                .map {
+                    it.stateClass to state
+                }
+                .toMap()
+            val obsoleteHistoryEntries = entered
+                .filter {
+                    it.stateClass.isAbstract || it.stateClass.isSealed
+                }
+                .map {
+                    it.stateClass
+                }
+            return StateWithHistory(
+                newState,
+                history - obsoleteHistoryEntries + newHistoryEntries
+            )
+        }
     }
 
     fun transition(event: EVENT): Pair<StateMachine<STATE, EVENT, SIDE_EFFECT>, Transition<STATE, EVENT, SIDE_EFFECT>> {
-        val currentState = state
-        val fromState = currentState.currentState
-        val (newState, transition) = fromState.getTransition(currentState, event).let { tmp ->
-            when(tmp) {
+        val (newState, transition) = getTransition(event).let { tmp ->
+            when (tmp) {
                 is Transition.Valid -> {
-                    val sideEffects = with(tmp) {
-                        val exitSideEffects = exited.flatMap {
-                            it.onExitListeners.flatMap { it(fromState, event, toState) }
-                        }
-                        val enteredSideEffects = entered.flatMap {
-                            it.onEnterListeners.flatMap { it(toState, event, fromState) }
-                        }
-                        exitSideEffects + sideEffects + enteredSideEffects
+                    val (entered, exited) = graph.getEnteredAndExitedStates(state.state, tmp.toState)
+                    val exitSideEffects = exited.flatMap {
+                        it.onExitListeners.flatMap { it(state.state, event, tmp.toState) }
                     }
-                    val transition = tmp.copy(sideEffects = sideEffects)
-
-                    val newHistoryEntries = transition
-                        .exited
-                        .filter {
-                            it.stateClass.isAbstract || it.stateClass.isSealed
-                        }
-                        .map {
-                            it.stateClass to transition.fromState
-                        }
-                        .toMap()
-                    val obsoleteHistoryEntries = transition
-                        .entered
-                        .filter {
-                            it.stateClass.isAbstract || it.stateClass.isSealed
-                        }
-                        .map {
-                            it.stateClass
-                        }
-                    val newState = CurrentState(
-                        transition.toState,
-                        currentState.history - obsoleteHistoryEntries + newHistoryEntries
-                    )
-                    newState to transition
+                    val enteredSideEffects = entered.flatMap {
+                        it.onEnterListeners.flatMap { it(tmp.toState, event, state.state) }
+                    }
+                    val newState = state.update(tmp.toState)
+                    newState to tmp.copy(sideEffects = exitSideEffects + tmp.sideEffects + enteredSideEffects)
                 }
                 is Transition.Invalid -> null to tmp
             }
@@ -63,73 +60,45 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
     }
 
     fun with(init: GraphBuilder<STATE, EVENT, SIDE_EFFECT>.() -> Unit): StateMachine<STATE, EVENT, SIDE_EFFECT> {
-        return create(graph.copy(initialState = state), init)
+        return create(graph, init)
     }
 
-    private fun STATE.getTransition(
-        currentState: CurrentState<STATE>,
+    private fun getTransition(
         event: EVENT
     ): Transition<STATE, EVENT, SIDE_EFFECT> {
-        val matchingFrom = getDefinitions()
+        val matchingFrom = graph.getDefinitions(state.state)
         matchingFrom.forEach {
             for ((eventMatcher, createTransitionTo) in it.transitions) {
                 if (eventMatcher.matches(event)) {
-                    val (toState, sideEffects) = when (val transition = createTransitionTo(this, event)) {
+                    val (toState, sideEffects) = when (val transition = createTransitionTo(state.state, event)) {
                         is Graph.State.TransitionTo.TransitionToState -> transition
                         is Graph.State.TransitionTo.TransitionToGroup -> getTransitionToGroup(
                             it,
-                            currentState,
                             transition
                         )
                     }
-                    val (entered, exited) = getEnteredAndExitedStates(matchingFrom, toState.getDefinitions())
                     return Transition.Valid(
-                        this,
+                        state.state,
                         event,
                         toState,
-                        exited,
-                        entered,
                         sideEffects
                     )
                 }
             }
         }
 
-        return Transition.Invalid(this, event)
-    }
-
-    private fun getEnteredAndExitedStates(
-        matchingFrom: List<Graph.State<STATE, EVENT, SIDE_EFFECT>>,
-        matchingTo: List<Graph.State<STATE, EVENT, SIDE_EFFECT>>
-    ): Pair<List<Graph.State<STATE, EVENT, SIDE_EFFECT>>, List<Graph.State<STATE, EVENT, SIDE_EFFECT>>> {
-        val stateHierarchyComparer = Comparator<Graph.State<STATE, *, *>> { a, b -> if (a.isSubStateOf(b)) -1 else 1 }
-        val matchingFromSorted = matchingFrom.sortedWith(stateHierarchyComparer)
-        val matchingToSorted = matchingTo.sortedWith(stateHierarchyComparer.reversed())
-
-        if (matchingFrom == matchingTo) {
-            return matchingFromSorted.take(1) to matchingFromSorted.take(1)
-        }
-        val exited = matchingFromSorted - matchingToSorted
-        val entered = matchingToSorted - matchingFromSorted
-
-        return entered to exited
+        return Transition.Invalid(state.state, event)
     }
 
     private fun getTransitionToGroup(
         matchedState: Graph.State<STATE, EVENT, SIDE_EFFECT>,
-        currentState: CurrentState<STATE>,
         transition: Graph.State.TransitionTo.TransitionToGroup<out STATE, out SIDE_EFFECT>
     ): Graph.State.TransitionTo.TransitionToState<STATE, SIDE_EFFECT> {
-        val historyEntry = currentState.history[transition.toGroup]
+        val historyEntry = state.history[transition.toGroup]
             ?: matchedState.initialState?.invoke()
-            ?: error("no history entry and no initial state defined")
+            ?: error("no history entry and no initial state for ${matchedState.stateClass} defined")
         return Graph.State.TransitionTo.TransitionToState(historyEntry, transition.sideEffects)
     }
-
-    private fun STATE.getDefinitions(): List<Graph.State<STATE, EVENT, SIDE_EFFECT>> = graph
-        .stateDefinitions
-        .filter { it.key.isInstance(this) }
-        .map { it.value }
 
     private fun Transition<STATE, EVENT, SIDE_EFFECT>.notifyOnTransition() {
         graph.onTransitionListeners.forEach { it(this) }
@@ -143,10 +112,11 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
             override val fromState: STATE,
             override val event: EVENT,
             val toState: STATE,
-            val exited: List<Graph.State<STATE, EVENT, SIDE_EFFECT>>,
-            val entered: List<Graph.State<STATE, EVENT, SIDE_EFFECT>>,
             val sideEffects: Iterable<SIDE_EFFECT> = emptyList()
-        ) : Transition<STATE, EVENT, SIDE_EFFECT>()
+        ) : Transition<STATE, EVENT, SIDE_EFFECT>() {
+            constructor(fromState: STATE, event: EVENT, toState: STATE, vararg sideEffects: SIDE_EFFECT)
+                    : this(fromState, event, toState, sideEffects.toList())
+        }
 
         data class Invalid<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> internal constructor(
             override val fromState: STATE,
@@ -155,10 +125,14 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
     }
 
     data class Graph<STATE : Any, EVENT : Any, SIDE_EFFECT : Any>(
-        val initialState: CurrentState<STATE>,
+        val initialState: STATE,
         val stateDefinitions: Map<KClass<out STATE>, State<STATE, EVENT, SIDE_EFFECT>>,
         val onTransitionListeners: List<(Transition<STATE, EVENT, SIDE_EFFECT>) -> Unit>
     ) {
+        fun getDefinitions(state: STATE): List<State<STATE, EVENT, SIDE_EFFECT>> = stateDefinitions
+            .filter { it.key.isInstance(state) }
+            .map { it.value }
+
         class State<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> internal constructor(val stateClass: KClass<out STATE>) {
             val onEnterListeners = mutableListOf<(STATE, EVENT, STATE) -> Iterable<SIDE_EFFECT>>()
             val onExitListeners = mutableListOf<(STATE, EVENT, STATE) -> Iterable<SIDE_EFFECT>>()
@@ -184,6 +158,26 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
                     }
                 }
             }
+        }
+
+        fun getEnteredAndExitedStates(
+            from: STATE,
+            to: STATE
+        ): Pair<List<State<STATE, EVENT, SIDE_EFFECT>>, List<State<STATE, EVENT, SIDE_EFFECT>>> {
+            val matchingFrom = getDefinitions(from)
+            val matchingTo = getDefinitions(to)
+
+            val stateHierarchyComparer = Comparator<State<STATE, *, *>> { a, b -> if (a.isSubStateOf(b)) -1 else 1 }
+            val matchingFromSorted = matchingFrom.sortedWith(stateHierarchyComparer)
+            val matchingToSorted = matchingTo.sortedWith(stateHierarchyComparer.reversed())
+
+            if (matchingFrom == matchingTo) {
+                return matchingFromSorted.take(1) to matchingFromSorted.take(1)
+            }
+            val exited = matchingFromSorted - matchingToSorted
+            val entered = matchingToSorted - matchingFromSorted
+
+            return entered to exited
         }
     }
 
@@ -217,11 +211,7 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
         private val stateDefinitions = LinkedHashMap(graph?.stateDefinitions ?: emptyMap())
         private val onTransitionListeners = ArrayList(graph?.onTransitionListeners ?: emptyList())
 
-        fun initialState(initialState: STATE, history: Map<out KClass<out STATE>, STATE> = emptyMap()) {
-            initialState(CurrentState(initialState, history))
-        }
-
-        fun initialState(initialState: CurrentState<STATE>) {
+        fun initialState(initialState: STATE) {
             this.initialState = initialState
         }
 
