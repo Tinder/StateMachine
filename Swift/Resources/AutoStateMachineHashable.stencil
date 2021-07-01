@@ -1,0 +1,39 @@
+{% for enum in types.enums where enum.implements.AutoStateMachineHashable or enum|annotated:"AutoStateMachineHashable" %}
+extension {{ enum.name }}: StateMachineHashable {
+
+    {{ enum.accessLevel }} enum HashableIdentifier {
+{% for case in enum.cases %}
+        case {{ case.name }}
+{% endfor %}
+    }
+
+    {{ enum.accessLevel }} var hashableIdentifier: HashableIdentifier {
+        switch self {
+{% for case in enum.cases %}
+        case .{{ case.name }}:
+            return .{{ case.name }}
+{% endfor %}
+        }
+    }
+
+    {{ enum.accessLevel }} var associatedValue: Any {
+        switch self {
+{% for case in enum.cases %}
+{% if case.associatedValues.count == 0 %}
+        case .{{ case.name }}:
+            return ()
+{% elif case.associatedValues.count == 1 %}
+        case let .{{ case.name }}(value):
+            return value
+{% else %}
+{% map case.associatedValues into values using associated %}value_{{ forloop.counter0 }}{% endmap %}
+        case let .{{ case.name }}({% for value in case.associatedValues %}value_{{ forloop.counter0 }}{% if not forloop.last %}, {% endif %}{% endfor %}):
+            return ({% for value in case.associatedValues %}value_{{ forloop.counter0 }}{% if not forloop.last %}, {% endif %}{% endfor %})
+{% endif %}
+{% endfor %}
+        }
+    }
+}{% if not forloop.last %}
+
+{% endif %}
+{% endfor %}
