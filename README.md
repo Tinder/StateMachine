@@ -222,6 +222,10 @@ implementation 'com.tinder.statemachine:statemachine:0.3.0'
 pod 'StateMachine', :git => 'https://github.com/Tinder/StateMachine.git'
 ```
 
+## References
+
+[A composable pattern for pure state machines with effects](https://gist.github.com/andymatuschak/d5f0a8730ad601bcccae97e8398e25b2) - [Andy Matuschak](https://gist.github.com/andymatuschak)
+
 ## Visualization
 
 Thanks to [@nvinayshetty](https://github.com/nvinayshetty), you can visualize your state machines right in the IDE using the [State Arts](https://github.com/nvinayshetty/StateArts) Intellij [plugin](https://plugins.jetbrains.com/plugin/12193-state-art).
