@@ -6,13 +6,13 @@ A state machine library in Kotlin and Swift.
 
 `StateMachine` is used in [Scarlet](https://github.com/Tinder/Scarlet)
 
-## Usage
+## Example State Diagram
 
-In this example, we create a `StateMachine` from the following state diagram.
+The examples below create a `StateMachine` from the following state diagram for matter:
 
-![State Diagram](./example/activity-diagram.png)
+<img src="./example/activity-diagram.png" width="378" />
 
-### Kotlin
+## Kotlin Usage
 
 Define states, events and side effects:
 
@@ -89,9 +89,9 @@ assertThat(transition).isEqualTo(
 then(logger).should().log(ON_MELTED_MESSAGE)
 ~~~
 
-### Swift
+## Swift Usage
 
-Inherit `StateMachineBuilder` to gain access to the DSL builder methods:
+Adopt `StateMachineBuilder` to gain access to the DSL builder methods:
 
 ```swift
 class MyExample: StateMachineBuilder {
@@ -119,7 +119,7 @@ enum SideEffect {
 Initialize state machine and declare state transitions:
 
 ```swift
-let stateMachine = MatterStateMachine {
+let stateMachine = StateMachine<State, Event, SideEffect> {
     initialState(.solid)
     state(.solid) {
         on(.melt) {
@@ -167,26 +167,30 @@ expect(transition).to(equal(
 expect(logger).to(log(Message.melted))
 ```
 
+### Swift Enumerations with Associated Values
+
+Due to Swift enumerations (as opposed to sealed classes in Kotlin),
+any `State` or `Event` enumeration defined with associated values will require [boilerplate implementation](https://github.com/Tinder/StateMachine/blob/c5c8155d55db5799190d9a06fbc31263c76c80b6/Swift/Tests/StateMachineTests/StateMachine_Turnstile_Tests.swift#L198-L260) for `StateMachineHashable` conformance.
+
+The easiest way to create this boilerplate is by using the [Sourcery](https://github.com/krzysztofzablocki/Sourcery) Swift code generator along with the [AutoStateMachineHashable stencil template](https://github.com/Tinder/StateMachine/blob/main/Swift/Resources/AutoStateMachineHashable.stencil) provided in this repository. Once the codegen is setup and configured, adopt `AutoStateMachineHashable` instead of `StateMachineHashable` for the `State` and/or `Event` enumerations.
+
 ## Examples
 
-### Matter State Machine
+#### Matter State Machine
 
-- [Kotlin](https://github.com/Tinder/StateMachine/blob/9ba046313703f37db749466b4a3504caaea2888c/src/test/kotlin/com/tinder/StateMachineTest.kt#L18-L47)
-- [Swift](https://github.com/Tinder/StateMachine/blob/9ba046313703f37db749466b4a3504caaea2888c/Swift/Tests/StateMachineTests/StateMachine_Matter_Tests.swift#L40-L69)
+- [Kotlin](https://github.com/Tinder/StateMachine/blob/c5c8155d55db5799190d9a06fbc31263c76c80b6/src/test/kotlin/com/tinder/StateMachineTest.kt#L18-L47)
+- [Swift](https://github.com/Tinder/StateMachine/blob/c5c8155d55db5799190d9a06fbc31263c76c80b6/Swift/Tests/StateMachineTests/StateMachine_Matter_Tests.swift#L40-L69)
 
-### Turnstile State Machine
+#### Turnstile State Machine
 
-- [Kotlin](https://github.com/Tinder/StateMachine/blob/9ba046313703f37db749466b4a3504caaea2888c/src/test/kotlin/com/tinder/StateMachineTest.kt#L157-L185)
-- [Swift](https://github.com/Tinder/StateMachine/blob/9ba046313703f37db749466b4a3504caaea2888c/Swift/Tests/StateMachineTests/StateMachine_Turnstile_Tests.swift#L36-L64)
-
-NOTE: Due to Swift using enumerations (as opposed to sealed classes in Kotlin), 
-any Swift enumeration taking advantage of associated values will require [additional boilerplate implementation](https://github.com/Tinder/StateMachine/blob/9ba046313703f37db749466b4a3504caaea2888c/Swift/Tests/StateMachineTests/StateMachine_Turnstile_Tests.swift#L198-L260).
+- [Kotlin](https://github.com/Tinder/StateMachine/blob/c5c8155d55db5799190d9a06fbc31263c76c80b6/src/test/kotlin/com/tinder/StateMachineTest.kt#L157-L185)
+- [Swift](https://github.com/Tinder/StateMachine/blob/c5c8155d55db5799190d9a06fbc31263c76c80b6/Swift/Tests/StateMachineTests/StateMachine_Turnstile_Tests.swift#L36-L64)
 
 ## Kotlin Download
 
 `StateMachine` is available in Maven Central.
 
-Snapshots of the development version are available in [Sonatype's `snapshots` repository][snap].
+Snapshots of the development version are available in [Sonatype's `snapshots` repository](https://oss.sonatype.org/content/repositories/snapshots/).
 
 ### Maven
 
@@ -194,14 +198,14 @@ Snapshots of the development version are available in [Sonatype's `snapshots` re
 <dependency>
     <groupId>com.tinder.statemachine</groupId>
     <artifactId>statemachine</artifactId>
-    <version>0.2.0</version>
+    <version>0.3.0</version>
 </dependency>
 ```
 
 ### Gradle
 
 ```groovy
-implementation 'com.tinder.statemachine:statemachine:0.2.0'
+implementation 'com.tinder.statemachine:statemachine:0.3.0'
 ```
 
 ## Swift Installation
@@ -209,9 +213,7 @@ implementation 'com.tinder.statemachine:statemachine:0.2.0'
 ### Swift Package Manager
 
 ```
-dependencies: [
-    .package(url: "https://github.com/Tinder/StateMachine.git", from: "0.0.1")
-]
+.package(url: "https://github.com/Tinder/StateMachine.git", from: "0.3.0")
 ```
 
 ### Cocoapods
@@ -220,9 +222,13 @@ dependencies: [
 pod 'StateMachine', :git => 'https://github.com/Tinder/StateMachine.git'
 ```
 
+## References
+
+[A composable pattern for pure state machines with effects](https://gist.github.com/andymatuschak/d5f0a8730ad601bcccae97e8398e25b2) - [Andy Matuschak](https://gist.github.com/andymatuschak)
+
 ## Visualization
 
-Thanks to @nvinayshetty, you can visualize your state machines right in the IDE using the [State Arts](https://github.com/nvinayshetty/StateArts) Intellij [plugin](https://plugins.jetbrains.com/plugin/12193-state-art).
+Thanks to [@nvinayshetty](https://github.com/nvinayshetty), you can visualize your state machines right in the IDE using the [State Arts](https://github.com/nvinayshetty/StateArts) Intellij [plugin](https://plugins.jetbrains.com/plugin/12193-state-art).
 
 ## License
 ~~~
@@ -251,6 +257,3 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ~~~
-
-[latest-jar]: https://tinder.com/
-[snap]: https://oss.sonatype.org/content/repositories/snapshots/
