@@ -1,21 +1,9 @@
 //
-//  Created by Christopher Fuller on 12/21/19.
-//  Copyright © 2019 Tinder. All rights reserved.
+//  Copyright (c) 2018, Match Group, LLC
+//  BSD License, see LICENSE file for details
 //
 
 open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable, SideEffect> {
-
-    public typealias FunctionBuilder = StateMachineTypes.StateMachineFunctionBuilder
-
-    public typealias Definition = StateMachineTypes.StateMachineDefinition<State, Event, SideEffect>
-    public typealias InitialState = StateMachineTypes.InitialState<State>
-    public typealias Component = StateMachineTypes.Component<State, Event, SideEffect>
-
-    private typealias States = [State.HashableIdentifier: Events]
-    private typealias Events = [Event.HashableIdentifier: Action.Factory]
-
-    private typealias EventHandler = StateMachineTypes.EventHandler<State, Event, SideEffect>
-    private typealias Action = StateMachineTypes.Action<State, Event, SideEffect>
 
     public enum Transition {
 
@@ -24,29 +12,39 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
 
         public struct Valid: CustomDebugStringConvertible {
 
+            public var debugDescription: String {
+                guard let sideEffect: SideEffect = sideEffect
+                else { return "fromState: \(fromState), event: \(event), toState: \(toState), sideEffect: nil" }
+                return "fromState: \(fromState), event: \(event), toState: \(toState), sideEffect: \(sideEffect)"
+            }
+
             public let fromState: State
             public let event: Event
             public let toState: State
             public let sideEffect: SideEffect?
-
-            public var debugDescription: String {
-                if let sideEffect = sideEffect {
-                    return "fromState: \(fromState), event: \(event), toState: \(toState), sideEffect: \(sideEffect)"
-                } else {
-                    return "fromState: \(fromState), event: \(event), toState: \(toState), sideEffect: nil"
-                }
-            }
         }
 
         public struct Invalid: Error, Equatable {}
     }
+
+    public typealias Definition = StateMachineTypes.Definition<State, Event, SideEffect>
+
+    private typealias DefinitionBuilder = StateMachineTypes.DefinitionBuilder
+    private typealias InitialState = StateMachineTypes.InitialState<State>
+    private typealias Component = StateMachineTypes.Component<State, Event, SideEffect>
+
+    private typealias States = [State.HashableIdentifier: Events]
+    private typealias Events = [Event.HashableIdentifier: Action.Factory]
+
+    private typealias EventHandler = StateMachineTypes.EventHandler<State, Event, SideEffect>
+    private typealias Action = StateMachineTypes.Action<State, Event, SideEffect>
 
     public private(set) var state: State
 
     private let states: States
     private var observers: [(object: () -> AnyObject?, callback: Transition.Callback)] = []
 
-    public init(@FunctionBuilder build: () -> Definition) {
+    public init(@DefinitionBuilder build: () -> Definition) {
         let definition: Definition = build()
         state = definition.initialState.state
         states = definition.states.reduce(into: States()) {
@@ -61,7 +59,8 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
 
     @discardableResult
     public func startObserving(_ observer: AnyObject?, callback: @escaping Transition.Callback) -> Self {
-        guard let observer = observer else { return self }
+        guard let observer: AnyObject = observer
+        else { return self }
         observers.append((object: { [weak observer] in observer }, callback: callback))
         return self
     }
@@ -72,7 +71,8 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
 
     public func stopObserving(_ observers: [AnyObject?]) {
         self.observers.removeAll {
-            guard let object = $0.object() else { return true }
+            guard let object: AnyObject = $0.object()
+            else { return true }
             return observers.contains { $0 === object }
         }
     }
@@ -86,12 +86,11 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
             let eventIdentifier: Event.HashableIdentifier = event.hashableIdentifier
             let factory: Action.Factory? = states[stateIdentifier]?[eventIdentifier]
             if let action: Action = try factory?(state, event) {
-                let transition: Transition.Valid =
-                    .init(fromState: state,
-                          event: event,
-                          toState: action.toState ?? state,
-                          sideEffect: action.sideEffect)
-                if let toState = action.toState {
+                let transition: Transition.Valid = .init(fromState: state,
+                                                         event: event,
+                                                         toState: action.toState ?? state,
+                                                         sideEffect: action.sideEffect)
+                if let toState: State = action.toState {
                     state = toState
                 }
                 result = .success(transition)
@@ -100,7 +99,6 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
             }
         } catch {
             result = .failure(error)
-            throw error
         }
         return try result.get()
     }
@@ -108,7 +106,8 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
     private func notify(_ result: Transition.Result) {
         var observers: [(object: () -> AnyObject?, callback: Transition.Callback)] = []
         for observer in self.observers {
-            guard observer.object() != nil else { continue }
+            guard observer.object() != nil
+            else { continue }
             observers.append(observer)
             observer.callback(result)
         }
@@ -116,7 +115,9 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
     }
 }
 
-extension StateMachine.Transition.Valid: Equatable where State: Equatable, Event: Equatable, SideEffect: Equatable {}
+extension StateMachine.Transition.Valid: Equatable where State: Equatable,
+                                                         Event: Equatable,
+                                                         SideEffect: Equatable {}
 
 public protocol StateMachineBuilder {
 
@@ -128,7 +129,7 @@ public protocol StateMachineBuilder {
     typealias InitialState = StateMachineTypes.InitialState<State>
     typealias Component = StateMachineTypes.Component<State, Event, SideEffect>
 
-    typealias StateFunctionBuilder = StateMachineTypes.StateFunctionBuilder
+    typealias EventHandlerArrayBuilder = StateMachineTypes.EventHandlerArrayBuilder
 
     typealias EventHandler = StateMachineTypes.EventHandler<State, Event, SideEffect>
     typealias Action = StateMachineTypes.Action<State, Event, SideEffect>
@@ -150,7 +151,7 @@ extension StateMachineBuilder {
 
     public static func state(
         _ state: State.HashableIdentifier,
-        @StateFunctionBuilder build: () -> [EventHandler]
+        @EventHandlerArrayBuilder build: () -> [EventHandler]
     ) -> Component {
         .state(state: state, events: build())
     }
@@ -198,37 +199,42 @@ extension StateMachineBuilder {
 
 public enum StateMachineTypes {
 
-    @_functionBuilder
-    public struct StateMachineFunctionBuilder {
-
-        public static func buildBlock<State, Event, SideEffect>(
-            _ initialState: InitialState<State>,
-            _ components: Component<State, Event, SideEffect>...
-        ) -> StateMachineDefinition<State, Event, SideEffect> {
-            StateMachineDefinition(initialState: initialState, components: components)
-        }
-    }
-
-    public struct StateMachineDefinition<State: StateMachineHashable, Event: StateMachineHashable, SideEffect> {
+    public struct Definition<State: StateMachineHashable, Event: StateMachineHashable, SideEffect> {
 
         fileprivate let initialState: InitialState<State>
         fileprivate let components: [Component<State, Event, SideEffect>]
 
-        fileprivate typealias States = [(state: State.HashableIdentifier, events: [EventHandler<State, Event, SideEffect>])]
+        fileprivate typealias States = [
+            (state: State.HashableIdentifier, events: [EventHandler<State, Event, SideEffect>])
+        ]
+
         fileprivate typealias Callbacks = [StateMachine<State, Event, SideEffect>.Transition.Callback]
 
         fileprivate var states: States {
             components.compactMap {
-                guard case let .state(state, events) = $0 else { return nil }
+                guard case let .state(state, events) = $0
+                else { return nil }
                 return (state: state, events: events)
             }
         }
 
         fileprivate var callbacks: Callbacks {
             components.compactMap {
-                guard case let .callback(callback) = $0 else { return nil }
+                guard case let .callback(callback) = $0
+                else { return nil }
                 return callback
             }
+        }
+    }
+
+    @resultBuilder
+    public struct DefinitionBuilder {
+
+        public static func buildBlock<State, Event, SideEffect>(
+            _ initialState: InitialState<State>,
+            _ components: Component<State, Event, SideEffect>...
+        ) -> Definition<State, Event, SideEffect> {
+            Definition(initialState: initialState, components: components)
         }
     }
 
@@ -243,13 +249,13 @@ public enum StateMachineTypes {
         case callback(callback: StateMachine<State, Event, SideEffect>.Transition.Callback)
     }
 
-    @_functionBuilder
-    public struct StateFunctionBuilder {
+    @resultBuilder
+    public struct EventHandlerArrayBuilder {
 
         public static func buildBlock<State, Event, SideEffect>(
             _ events: [EventHandler<State, Event, SideEffect>]...
         ) -> [EventHandler<State, Event, SideEffect>] {
-            events.flatMap { $0 }
+            Array(events.joined())
         }
     }
 
@@ -270,7 +276,7 @@ public enum StateMachineTypes {
     public struct IncorrectTypeError: Error, CustomDebugStringConvertible {
 
         public var debugDescription: String {
-            "Incorrect Type: Expected <\(expectedType)> but encountered <\(encounteredType)>"
+            "Incorrect Type: expected `\(expectedType)`, encountered `\(encounteredType)`"
         }
 
         public let expectedType: Any.Type
@@ -287,9 +293,6 @@ public protocol StateMachineHashable {
 
     var hashableIdentifier: HashableIdentifier { get }
     var associatedValue: Any { get }
-
-    // TODO: [CF] Return T (instead of closure) once Swift supports throwing subscript
-    subscript<T>(dynamicMember member: String) -> () throws -> T { get }
 }
 
 extension StateMachineHashable where Self: Hashable {
@@ -301,13 +304,14 @@ extension StateMachineHashable {
 
     public var associatedValue: Any { () }
 
+    // TODO: [CF] Return T (instead of closure) once Swift supports throwing subscript
     public subscript<T>(dynamicMember member: String) -> () throws -> T {
         { [associatedValue] in
-            guard let value = associatedValue as? T else {
-                throw IncorrectTypeError(expectedType: T.self,
-                                         encounteredType: type(of: associatedValue))
-            }
+            guard let value: T = associatedValue as? T
+            else { throw IncorrectTypeError(expectedType: T.self, encounteredType: type(of: associatedValue)) }
             return value
         }
     }
 }
+
+public protocol AutoStateMachineHashable {}
