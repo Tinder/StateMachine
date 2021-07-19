@@ -1,22 +1,28 @@
 package com.tinder
 
-import java.util.concurrent.atomic.AtomicReference
+import kotlinx.atomicfu.atomic
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
+import kotlin.reflect.KClass
 
 class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private constructor(
     private val graph: Graph<STATE, EVENT, SIDE_EFFECT>
 ) {
+    private val lock = SynchronizedObject()
+    private val stateRef = atomic<STATE>(graph.initialState)
 
-    private val stateRef = AtomicReference<STATE>(graph.initialState)
-
-    val state: STATE
-        get() = stateRef.get()
+    var state: STATE
+        get() = stateRef.value
+        private set(value) {
+            stateRef.value = value
+        }
 
     fun transition(event: EVENT): Transition<STATE, EVENT, SIDE_EFFECT> {
-        val transition = synchronized(this) {
-            val fromState = stateRef.get()
+        val transition = synchronized(lock) {
+            val fromState = state
             val transition = fromState.getTransition(event)
             if (transition is Transition.Valid) {
-                stateRef.set(transition.toState)
+                state = transition.toState
             }
             transition
         }
@@ -51,7 +57,7 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
     private fun STATE.getDefinition() = graph.stateDefinitions
         .filter { it.key.matches(this) }
         .map { it.value }
-        .firstOrNull() ?: error("Missing definition for state ${this.javaClass.simpleName}!")
+            .firstOrNull() ?: error("Missing definition for state ${this::class.simpleName}!")
 
     private fun STATE.notifyOnEnter(cause: EVENT) {
         getDefinition().onEnterListeners.forEach { it(this, cause) }
@@ -101,7 +107,7 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
         }
     }
 
-    class Matcher<T : Any, out R : T> private constructor(private val clazz: Class<R>) {
+    class Matcher<T : Any, out R : T> private constructor(private val clazz: KClass<R>) {
 
         private val predicates = mutableListOf<(T) -> Boolean>({ clazz.isInstance(it) })
 
@@ -115,9 +121,9 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
         fun matches(value: T) = predicates.all { it(value) }
 
         companion object {
-            fun <T : Any, R : T> any(clazz: Class<R>): Matcher<T, R> = Matcher(clazz)
+            fun <T : Any, R : T> any(clazz: KClass<R>): Matcher<T, R> = Matcher(clazz)
 
-            inline fun <T : Any, reified R : T> any(): Matcher<T, R> = any(R::class.java)
+            inline fun <T : Any, reified R : T> any(): Matcher<T, R> = any(R::class)
 
             inline fun <T : Any, reified R : T> eq(value: R): Matcher<T, R> = any<T, R>().where { this == value }
         }
@@ -135,8 +141,8 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
         }
 
         fun <S : STATE> state(
-            stateMatcher: Matcher<STATE, S>,
-            init: StateDefinitionBuilder<S>.() -> Unit
+                stateMatcher: Matcher<STATE, S>,
+                init: StateDefinitionBuilder<S>.() -> Unit
         ) {
             stateDefinitions[stateMatcher] = StateDefinitionBuilder<S>().apply(init).build()
         }
