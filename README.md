@@ -198,14 +198,14 @@ Snapshots of the development version are available in [Sonatype's `snapshots` re
 <dependency>
     <groupId>com.tinder.statemachine</groupId>
     <artifactId>statemachine</artifactId>
-    <version>0.3.0</version>
+    <version>0.2.0</version>
 </dependency>
 ```
 
 ### Gradle
 
 ```groovy
-implementation 'com.tinder.statemachine:statemachine:0.3.0'
+implementation 'com.tinder.statemachine:statemachine:0.2.0'
 ```
 
 ## Swift Installation
@@ -213,7 +213,7 @@ implementation 'com.tinder.statemachine:statemachine:0.3.0'
 ### Swift Package Manager
 
 ```
-.package(url: "https://github.com/Tinder/StateMachine.git", from: "0.3.0")
+.package(url: "https://github.com/Tinder/StateMachine.git", from: "0.2.0")
 ```
 
 ### Cocoapods
