@@ -5,7 +5,7 @@ import Foundation
 let args: [String] = Array(CommandLine.arguments.dropFirst())
 
 guard let platformName: String = args.first
-else { exit(EXIT_FAILURE) }
+else { exit(1) }
 
 let task: Process = .init()
 let pipe: Pipe = .init()
@@ -23,6 +23,6 @@ guard let object: Any = try? JSONSerialization.jsonObject(with: data),
       let platforms: [[String: Any]] = json["platforms"] as? [[String: Any]],
       let platform: [String: Any] = platforms.first(where: { $0["platformName"] as? String == platformName }),
       let version: String = platform["version"] as? String
-else { exit(EXIT_FAILURE) }
+else { exit(1) }
 
 print(version)
