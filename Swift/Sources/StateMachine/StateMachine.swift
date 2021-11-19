@@ -27,6 +27,11 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
         public struct Invalid: Error, Equatable {}
     }
 
+    public enum StateMachineError: Error {
+
+        case recursionDetected
+    }
+
     private struct Observer {
 
         weak var object: AnyObject?
@@ -50,6 +55,8 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
 
     private let states: States
     private var observers: [Observer] = []
+
+    private var isNotifying: Bool = false
 
     public init(@DefinitionBuilder build: () -> Definition) {
         let definition: Definition = build()
@@ -86,6 +93,8 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
 
     @discardableResult
     public func transition(_ event: Event) throws -> Transition.Valid {
+        guard !isNotifying
+        else { throw StateMachineError.recursionDetected }
         let result: Transition.Result
         defer { notify(result) }
         do {
@@ -111,6 +120,8 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
     }
 
     private func notify(_ result: Transition.Result) {
+        isNotifying = true
+        defer { isNotifying = false }
         var observers: [Observer] = []
         for observer in self.observers {
             guard observer.object != nil

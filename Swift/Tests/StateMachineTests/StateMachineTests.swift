@@ -169,6 +169,28 @@ final class StateMachineTests: XCTestCase, StateMachineBuilder {
         // Then
         expect(transitionCount).to(equal(2))
     }
+
+    func testRecursionDetectedError() throws {
+
+        var error: TestStateMachine.StateMachineError? = nil
+
+        // Given
+        let stateMachine: TestStateMachine = givenState(is: .stateOne)
+
+        stateMachine.startObserving(self) { [unowned stateMachine] _ in
+            do {
+                try stateMachine.transition(.eventOne)
+            } catch let e as TestStateMachine.StateMachineError {
+                error = e
+            } catch {}
+        }
+
+        // When
+        try stateMachine.transition(.eventOne)
+
+        // Then
+        expect(error).to(equal(.recursionDetected))
+    }
 }
 
 final class Logger {
