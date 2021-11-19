@@ -32,6 +32,13 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
         case recursionDetected
     }
 
+    private struct Observer {
+
+        weak var object: AnyObject?
+
+        let callback: Transition.Callback
+    }
+
     public typealias Definition = StateMachineTypes.Definition<State, Event, SideEffect>
 
     private typealias DefinitionBuilder = StateMachineTypes.DefinitionBuilder
@@ -47,7 +54,7 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
     public private(set) var state: State
 
     private let states: States
-    private var observers: [(object: () -> AnyObject?, callback: Transition.Callback)] = []
+    private var observers: [Observer] = []
 
     private var isNotifying: Bool = false
 
@@ -59,8 +66,8 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
                 $0[$1.event] = $1.action
             }
         }
-        observers = definition.callbacks.map { [unowned self] in
-            (object: { self }, callback: $0)
+        observers = definition.callbacks.map {
+            Observer(object: self, callback: $0)
         }
     }
 
@@ -68,7 +75,7 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
     public func startObserving(_ observer: AnyObject?, callback: @escaping Transition.Callback) -> Self {
         guard let observer: AnyObject = observer
         else { return self }
-        observers.append((object: { [weak observer] in observer }, callback: callback))
+        observers.append(Observer(object: observer, callback: callback))
         return self
     }
 
@@ -78,7 +85,7 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
 
     public func stopObserving(_ observers: [AnyObject?]) {
         self.observers.removeAll {
-            guard let object: AnyObject = $0.object()
+            guard let object: AnyObject = $0.object
             else { return true }
             return observers.contains { $0 === object }
         }
@@ -115,9 +122,9 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
     private func notify(_ result: Transition.Result) {
         isNotifying = true
         defer { isNotifying = false }
-        var observers: [(object: () -> AnyObject?, callback: Transition.Callback)] = []
+        var observers: [Observer] = []
         for observer in self.observers {
-            guard observer.object() != nil
+            guard observer.object != nil
             else { continue }
             observers.append(observer)
             observer.callback(result)
