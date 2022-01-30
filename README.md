@@ -190,7 +190,7 @@ The easiest way to create this boilerplate is by using the [Sourcery](https://gi
 
 `StateMachine` is available in Maven Central.
 
-Snapshots of the development version are available in [Sonatype's `snapshots` repository](https://oss.sonatype.org/content/repositories/snapshots/).
+Snapshots of the development version are available in [Sonatype's `snapshots` repository](https://s01.oss.sonatype.org/content/repositories/snapshots/).
 
 ### Maven
 
