@@ -28,23 +28,41 @@ final class StateMachine_Matter_Tests: XCTestCase, StateMachineBuilder {
     typealias ValidTransition = MatterStateMachine.Transition.Valid
     typealias InvalidTransition = MatterStateMachine.Transition.Invalid
 
-    enum Message {
+    enum Message: String {
 
-        static let melted: String = "I melted"
-        static let frozen: String = "I froze"
-        static let vaporized: String = "I vaporized"
-        static let condensed: String = "I condensed"
+        case melted = "I melted"
+        case frozen = "I froze"
+        case vaporized = "I vaporized"
+        case condensed = "I condensed"
+        case enteredSolid
+        case exitedSolid
+        case enteredLiquid
+        case exitedLiquid
+        case enteredGas
+        case exitedGas
     }
 
     static func matterStateMachine(withInitialState _state: State, logger: Logger) -> MatterStateMachine {
         MatterStateMachine {
             initialState(_state)
             state(.solid) {
+                onEnter { _ in
+                    logger.log(Message.enteredSolid.rawValue)
+                }
+                onExit { _ in
+                    logger.log(Message.exitedSolid.rawValue)
+                }
                 on(.melt) {
                     transition(to: .liquid, emit: .logMelted)
                 }
             }
             state(.liquid) {
+                onEnter { _ in
+                    logger.log(Message.enteredLiquid.rawValue)
+                }
+                onExit { _ in
+                    logger.log(Message.exitedLiquid.rawValue)
+                }
                 on(.freeze) {
                     transition(to: .solid, emit: .logFrozen)
                 }
@@ -53,6 +71,12 @@ final class StateMachine_Matter_Tests: XCTestCase, StateMachineBuilder {
                 }
             }
             state(.gas) {
+                onEnter { _ in
+                    logger.log(Message.enteredGas.rawValue)
+                }
+                onExit { _ in
+                    logger.log(Message.exitedGas.rawValue)
+                }
                 on(.condense) {
                     transition(to: .liquid, emit: .logCondensed)
                 }
@@ -61,10 +85,10 @@ final class StateMachine_Matter_Tests: XCTestCase, StateMachineBuilder {
                 guard case let .success(transition) = $0 else { return }
                 transition.sideEffects.forEach { sideEffect in
                     switch sideEffect {
-                    case .logMelted: logger.log(Message.melted)
-                    case .logFrozen: logger.log(Message.frozen)
-                    case .logVaporized: logger.log(Message.vaporized)
-                    case .logCondensed: logger.log(Message.condensed)
+                    case .logMelted: logger.log(Message.melted.rawValue)
+                    case .logFrozen: logger.log(Message.frozen.rawValue)
+                    case .logVaporized: logger.log(Message.vaporized.rawValue)
+                    case .logCondensed: logger.log(Message.condensed.rawValue)
                     }
                 }
             }
@@ -103,7 +127,7 @@ final class StateMachine_Matter_Tests: XCTestCase, StateMachineBuilder {
                                                     event: .melt,
                                                     toState: .liquid,
                                                     sideEffects: [.logMelted])))
-        expect(self.logger).to(log(Message.melted))
+        expect(self.logger).to(log(Message.exitedSolid.rawValue, Message.enteredLiquid.rawValue, Message.melted.rawValue))
     }
 
     func test_givenStateIsSolid_whenFrozen_shouldThrowInvalidTransitionError() throws {
@@ -136,7 +160,7 @@ final class StateMachine_Matter_Tests: XCTestCase, StateMachineBuilder {
                                                     event: .freeze,
                                                     toState: .solid,
                                                     sideEffects: [.logFrozen])))
-        expect(self.logger).to(log(Message.frozen))
+        expect(self.logger).to(log(Message.exitedLiquid.rawValue, Message.enteredSolid.rawValue, Message.frozen.rawValue))
     }
 
     func test_givenStateIsLiquid_whenVaporized_shouldTransitionToGasState() throws {
@@ -153,7 +177,7 @@ final class StateMachine_Matter_Tests: XCTestCase, StateMachineBuilder {
                                                     event: .vaporize,
                                                     toState: .gas,
                                                     sideEffects: [.logVaporized])))
-        expect(self.logger).to(log(Message.vaporized))
+        expect(self.logger).to(log(Message.exitedLiquid.rawValue, Message.enteredGas.rawValue, Message.vaporized.rawValue))
     }
 
     func test_givenStateIsGas_whenCondensed_shouldTransitionToLiquidState() throws {
@@ -170,6 +194,6 @@ final class StateMachine_Matter_Tests: XCTestCase, StateMachineBuilder {
                                                     event: .condense,
                                                     toState: .liquid,
                                                     sideEffects: [.logCondensed])))
-        expect(self.logger).to(log(Message.condensed))
+        expect(self.logger).to(log(Message.exitedGas.rawValue, Message.enteredLiquid.rawValue, Message.condensed.rawValue))
     }
 }

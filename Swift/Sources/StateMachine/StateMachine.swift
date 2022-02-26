@@ -54,16 +54,33 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
     private let states: States
     private var observers: [Observer] = []
 
+    private typealias EnterExitAction = (State) throws -> Void
+
+    private var onEnterActions: [State.HashableIdentifier: EnterExitAction]
+    private var onExitActions: [State.HashableIdentifier: EnterExitAction]
+
     private var isNotifying: Bool = false
 
     public init(@DefinitionBuilder build: () -> Definition) {
         let definition: Definition = build()
         state = definition.initialState.state
-        states = definition.states.reduce(into: States()) {
-            $0[$1.state] = $1.events.reduce(into: Events()) {
-                $0[$1.event] = $1.action
+        var enterActions: [State.HashableIdentifier: EnterExitAction] = [:]
+        var exitActions: [State.HashableIdentifier: EnterExitAction] = [:]
+        states = definition.states.reduce(into: States()) { result, tuple in
+            let (state, events) = tuple
+            result[state] = events.reduce(into: Events()) {
+                switch $1.eventType {
+                case .onEnter(let action):
+                    enterActions[state] = action
+                case .onExit(let action):
+                    exitActions[state] = action
+                case .normal(let event, let action):
+                    $0[event] = action
+                }
             }
         }
+        onEnterActions = enterActions
+        onExitActions = exitActions
         observers = definition.callbacks.map {
             Observer(object: self, callback: $0)
         }
@@ -104,10 +121,18 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
                                                          event: event,
                                                          toState: action.toState ?? state,
                                                          sideEffects: action.sideEffects)
+                let fromState = state
                 if let toState: State = action.toState {
                     state = toState
                 }
+
                 result = .success(transition)
+
+                // if not `dontTransition`
+                if action.toState != nil {
+                    try? onExitActions[stateIdentifier]?(fromState)
+                    try? onEnterActions[state.hashableIdentifier]?(state)
+                }
             } else {
                 result = .failure(Transition.Invalid())
             }
@@ -172,25 +197,41 @@ extension StateMachineBuilder {
         .state(state: state, events: build())
     }
 
+    public static func onEnter(_ perform: @escaping (State) throws -> Void) -> [EventHandler] {
+        [EventHandler(eventType: .onEnter(perform))]
+    }
+
+    public static func onExit(_ perform: @escaping (State) throws -> Void) -> [EventHandler] {
+        [EventHandler(eventType: .onExit(perform))]
+    }
+
+    public static func onEnter(_ perform: @escaping () throws -> Void) -> [EventHandler] {
+        [EventHandler(eventType: .onEnter({ _ in try perform() }))]
+    }
+
+    public static func onExit(_ perform: @escaping () throws -> Void) -> [EventHandler] {
+        [EventHandler(eventType: .onExit({ _ in try perform() }))]
+    }
+
     public static func on(
         _ event: Event.HashableIdentifier,
         perform: @escaping (State, Event) throws -> Action
     ) -> [EventHandler] {
-        [EventHandler(event: event, action: perform)]
+        [EventHandler(eventType: .normal(event, perform))]
     }
 
     public static func on(
         _ event: Event.HashableIdentifier,
         perform: @escaping (State) throws -> Action
     ) -> [EventHandler] {
-        [EventHandler(event: event) { state, _ in try perform(state) }]
+        [EventHandler(eventType: .normal(event, { state, _ in try perform(state) }))]
     }
 
     public static func on(
         _ event: Event.HashableIdentifier,
         perform: @escaping () throws -> Action
     ) -> [EventHandler] {
-        [EventHandler(event: event) { _, _ in try perform() }]
+        [EventHandler(eventType: .normal(event, { _, _ in try perform() }))]
     }
 
     public static func transition(
@@ -277,8 +318,16 @@ public enum StateMachineTypes {
 
     public struct EventHandler<State: StateMachineHashable, Event: StateMachineHashable, SideEffect> {
 
-        fileprivate let event: Event.HashableIdentifier
-        fileprivate let action: Action<State, Event, SideEffect>.Factory
+        fileprivate var eventType: EventType<State, Event, SideEffect>
+
+        fileprivate enum EventType<State: StateMachineHashable, Event: StateMachineHashable, SideEffect> {
+
+            fileprivate typealias EnterExitAction = (State) throws -> Void
+
+            case normal(Event.HashableIdentifier, Action<State, Event, SideEffect>.Factory)
+            case onEnter(EnterExitAction)
+            case onExit(EnterExitAction)
+        }
     }
 
     public struct Action<State: StateMachineHashable, Event: StateMachineHashable, SideEffect> {

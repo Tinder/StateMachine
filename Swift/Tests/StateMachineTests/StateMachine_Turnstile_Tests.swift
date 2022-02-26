@@ -32,10 +32,25 @@ final class StateMachine_Turnstile_Tests: XCTestCase, StateMachineBuilder {
     typealias TurnstileStateMachine = StateMachine<State, Event, SideEffect>
     typealias ValidTransition = TurnstileStateMachine.Transition.Valid
 
+    enum Message: String {
+        case enteredLocked
+        case exitedLocked
+        case enteredUnlocked
+        case exitedUnlocked
+        case enteredBroken
+        case exitedBroken
+    }
+
     static func turnstileStateMachine(withInitialState _state: State, logger: Logger) -> TurnstileStateMachine {
         TurnstileStateMachine {
             initialState(_state)
             state(.locked) {
+                onEnter { state in
+                    logger.log("\(Message.enteredLocked.rawValue) \(try state.credit() as Int)")
+                }
+                onExit {
+                    logger.log(Message.exitedLocked.rawValue)
+                }
                 on(.insertCoin) { locked, insertCoin in
                     let newCredit: Int = try locked.credit() + insertCoin.value()
                     if newCredit >= Constant.farePrice {
@@ -52,11 +67,23 @@ final class StateMachine_Turnstile_Tests: XCTestCase, StateMachineBuilder {
                 }
             }
             state(.unlocked) {
+                onEnter {
+                    logger.log(Message.enteredUnlocked.rawValue)
+                }
+                onExit {
+                    logger.log(Message.exitedUnlocked.rawValue)
+                }
                 on(.admitPerson) {
                     transition(to: .locked(credit: 0), emit: .closeDoors)
                 }
             }
             state(.broken) {
+                onEnter {
+                    logger.log(Message.enteredBroken.rawValue)
+                }
+                onExit {
+                    logger.log(Message.exitedBroken.rawValue)
+                }
                 on(.machineRepairDidComplete) { broken in
                     transition(to: try broken.oldState())
                 }
@@ -96,6 +123,7 @@ final class StateMachine_Turnstile_Tests: XCTestCase, StateMachineBuilder {
                                                     event: .insertCoin(10),
                                                     toState: .locked(credit: 10),
                                                     sideEffects: [])))
+        expect(self.logger).to(log(Message.exitedLocked.rawValue, "\(Message.enteredLocked.rawValue) 10"))
     }
 
     func test_givenStateIsLocked_whenInsertCoin_andCreditEqualsFarePrice_shouldTransitionToUnlockedStateAndOpenDoors() throws {
@@ -112,6 +140,7 @@ final class StateMachine_Turnstile_Tests: XCTestCase, StateMachineBuilder {
                                                     event: .insertCoin(15),
                                                     toState: .unlocked,
                                                     sideEffects: [.openDoors])))
+        expect(self.logger).to(log(Message.exitedLocked.rawValue, Message.enteredUnlocked.rawValue))
     }
 
     func test_givenStateIsLocked_whenInsertCoin_andCreditMoreThanFarePrice_shouldTransitionToUnlockedStateAndOpenDoors() throws {
@@ -128,6 +157,7 @@ final class StateMachine_Turnstile_Tests: XCTestCase, StateMachineBuilder {
                                                     event: .insertCoin(20),
                                                     toState: .unlocked,
                                                     sideEffects: [.openDoors])))
+        expect(self.logger).to(log(Message.exitedLocked.rawValue, Message.enteredUnlocked.rawValue))
     }
 
     func test_givenStateIsLocked_whenAdmitPerson_shouldTransitionToLockedStateAndSoundAlarm() throws {
@@ -144,6 +174,7 @@ final class StateMachine_Turnstile_Tests: XCTestCase, StateMachineBuilder {
                                                     event: .admitPerson,
                                                     toState: .locked(credit: 35),
                                                     sideEffects: [.soundAlarm])))
+        expect(self.logger).to(noLog())
     }
 
     func test_givenStateIsLocked_whenMachineDidFail_shouldTransitionToBrokenStateAndOrderRepair() throws {
@@ -160,6 +191,7 @@ final class StateMachine_Turnstile_Tests: XCTestCase, StateMachineBuilder {
                                                     event: .machineDidFail,
                                                     toState: .broken(oldState: .locked(credit: 15)),
                                                     sideEffects: [.orderRepair])))
+        expect(self.logger).to(log(Message.exitedLocked.rawValue, Message.enteredBroken.rawValue))
     }
 
     func test_givenStateIsUnlocked_whenAdmitPerson_shouldTransitionToLockedStateAndCloseDoors() throws {
@@ -176,6 +208,7 @@ final class StateMachine_Turnstile_Tests: XCTestCase, StateMachineBuilder {
                                                     event: .admitPerson,
                                                     toState: .locked(credit: 0),
                                                     sideEffects: [.closeDoors])))
+        expect(self.logger).to(log(Message.exitedUnlocked.rawValue, "\(Message.enteredLocked.rawValue) 0"))
     }
 
     func test_givenStateIsBroken_whenMachineRepairDidComplete_shouldTransitionToLockedState() throws {
@@ -192,6 +225,7 @@ final class StateMachine_Turnstile_Tests: XCTestCase, StateMachineBuilder {
                                                     event: .machineRepairDidComplete,
                                                     toState: .locked(credit: 15),
                                                     sideEffects: [])))
+        expect(self.logger).to(log(Message.exitedBroken.rawValue, "\(Message.enteredLocked.rawValue) 15"))
     }
 }
 

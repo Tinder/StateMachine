@@ -224,3 +224,13 @@ func log(_ expectedMessages: String...) -> Predicate<Logger> {
         return PredicateResult(bool: actualMessages == expectedMessages, message: message)
     }
 }
+
+func noLog() -> Predicate<Logger> {
+    return Predicate {
+        let actualMessages: [String]? = try $0.evaluate()?.messages
+        let actualString: String = stringify(actualMessages?.joined(separator: "\\n"))
+        let message: ExpectationMessage = .expectedCustomValueTo("no logs",
+                                                                 actual: "<\(actualString)>")
+        return PredicateResult(bool: actualString.count == 0, message: message)
+    }
+}
