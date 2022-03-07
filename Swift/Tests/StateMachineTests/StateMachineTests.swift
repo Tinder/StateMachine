@@ -66,7 +66,7 @@ final class StateMachineTests: XCTestCase, StateMachineBuilder {
         expect(transition).to(equal(ValidTransition(fromState: .stateOne,
                                                     event: .eventOne,
                                                     toState: .stateOne,
-                                                    sideEffect: .commandOne)))
+                                                    sideEffects: [.commandOne])))
     }
 
     func testTransition() throws {
@@ -82,7 +82,7 @@ final class StateMachineTests: XCTestCase, StateMachineBuilder {
         expect(transition).to(equal(ValidTransition(fromState: .stateOne,
                                                     event: .eventTwo,
                                                     toState: .stateTwo,
-                                                    sideEffect: .commandTwo)))
+                                                    sideEffects: [.commandTwo])))
     }
 
     func testInvalidTransition() throws {
@@ -131,16 +131,16 @@ final class StateMachineTests: XCTestCase, StateMachineBuilder {
             .success(ValidTransition(fromState: .stateOne,
                                      event: .eventOne,
                                      toState: .stateOne,
-                                     sideEffect: .commandOne)),
+                                     sideEffects: [.commandOne])),
             .success(ValidTransition(fromState: .stateOne,
                                      event: .eventTwo,
                                      toState: .stateTwo,
-                                     sideEffect: .commandTwo)),
+                                     sideEffects: [.commandTwo])),
             .failure(InvalidTransition()),
             .success(ValidTransition(fromState: .stateTwo,
                                      event: .eventTwo,
                                      toState: .stateTwo,
-                                     sideEffect: .commandThree))
+                                     sideEffects: [.commandThree]))
         ]))
     }
 

@@ -95,7 +95,7 @@ final class StateMachine_Turnstile_Tests: XCTestCase, StateMachineBuilder {
         expect(transition).to(equal(ValidTransition(fromState: .locked(credit: 0),
                                                     event: .insertCoin(10),
                                                     toState: .locked(credit: 10),
-                                                    sideEffect: nil)))
+                                                    sideEffects: [])))
     }
 
     func test_givenStateIsLocked_whenInsertCoin_andCreditEqualsFarePrice_shouldTransitionToUnlockedStateAndOpenDoors() throws {
@@ -111,7 +111,7 @@ final class StateMachine_Turnstile_Tests: XCTestCase, StateMachineBuilder {
         expect(transition).to(equal(ValidTransition(fromState: .locked(credit: 35),
                                                     event: .insertCoin(15),
                                                     toState: .unlocked,
-                                                    sideEffect: .openDoors)))
+                                                    sideEffects: [.openDoors])))
     }
 
     func test_givenStateIsLocked_whenInsertCoin_andCreditMoreThanFarePrice_shouldTransitionToUnlockedStateAndOpenDoors() throws {
@@ -127,7 +127,7 @@ final class StateMachine_Turnstile_Tests: XCTestCase, StateMachineBuilder {
         expect(transition).to(equal(ValidTransition(fromState: .locked(credit: 35),
                                                     event: .insertCoin(20),
                                                     toState: .unlocked,
-                                                    sideEffect: .openDoors)))
+                                                    sideEffects: [.openDoors])))
     }
 
     func test_givenStateIsLocked_whenAdmitPerson_shouldTransitionToLockedStateAndSoundAlarm() throws {
@@ -143,7 +143,7 @@ final class StateMachine_Turnstile_Tests: XCTestCase, StateMachineBuilder {
         expect(transition).to(equal(ValidTransition(fromState: .locked(credit: 35),
                                                     event: .admitPerson,
                                                     toState: .locked(credit: 35),
-                                                    sideEffect: .soundAlarm)))
+                                                    sideEffects: [.soundAlarm])))
     }
 
     func test_givenStateIsLocked_whenMachineDidFail_shouldTransitionToBrokenStateAndOrderRepair() throws {
@@ -159,7 +159,7 @@ final class StateMachine_Turnstile_Tests: XCTestCase, StateMachineBuilder {
         expect(transition).to(equal(ValidTransition(fromState: .locked(credit: 15),
                                                     event: .machineDidFail,
                                                     toState: .broken(oldState: .locked(credit: 15)),
-                                                    sideEffect: .orderRepair)))
+                                                    sideEffects: [.orderRepair])))
     }
 
     func test_givenStateIsUnlocked_whenAdmitPerson_shouldTransitionToLockedStateAndCloseDoors() throws {
@@ -175,7 +175,7 @@ final class StateMachine_Turnstile_Tests: XCTestCase, StateMachineBuilder {
         expect(transition).to(equal(ValidTransition(fromState: .unlocked,
                                                     event: .admitPerson,
                                                     toState: .locked(credit: 0),
-                                                    sideEffect: .closeDoors)))
+                                                    sideEffects: [.closeDoors])))
     }
 
     func test_givenStateIsBroken_whenMachineRepairDidComplete_shouldTransitionToLockedState() throws {
@@ -191,7 +191,7 @@ final class StateMachine_Turnstile_Tests: XCTestCase, StateMachineBuilder {
         expect(transition).to(equal(ValidTransition(fromState: .broken(oldState: .locked(credit: 15)),
                                                     event: .machineRepairDidComplete,
                                                     toState: .locked(credit: 15),
-                                                    sideEffect: nil)))
+                                                    sideEffects: [])))
     }
 }
 

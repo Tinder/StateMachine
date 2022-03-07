@@ -13,15 +13,13 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
         public struct Valid: CustomDebugStringConvertible {
 
             public var debugDescription: String {
-                guard let sideEffect: SideEffect = sideEffect
-                else { return "fromState: \(fromState), event: \(event), toState: \(toState), sideEffect: nil" }
-                return "fromState: \(fromState), event: \(event), toState: \(toState), sideEffect: \(sideEffect)"
+                return "fromState: \(fromState), event: \(event), toState: \(toState), sideEffect: \(sideEffects)"
             }
 
             public let fromState: State
             public let event: Event
             public let toState: State
-            public let sideEffect: SideEffect?
+            public let sideEffects: [SideEffect]
         }
 
         public struct Invalid: Error, Equatable {}
@@ -105,7 +103,7 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
                 let transition: Transition.Valid = .init(fromState: state,
                                                          event: event,
                                                          toState: action.toState ?? state,
-                                                         sideEffect: action.sideEffect)
+                                                         sideEffects: action.sideEffects)
                 if let toState: State = action.toState {
                     state = toState
                 }
@@ -197,15 +195,15 @@ extension StateMachineBuilder {
 
     public static func transition(
         to state: State,
-        emit sideEffect: SideEffect? = nil
+        emit sideEffect: SideEffect...
     ) -> Action {
-        Action(toState: state, sideEffect: sideEffect)
+        Action(toState: state, sideEffects: sideEffect)
     }
 
     public static func dontTransition(
-        emit sideEffect: SideEffect? = nil
+        emit sideEffect: SideEffect...
     ) -> Action {
-        Action(toState: nil, sideEffect: sideEffect)
+        Action(toState: nil, sideEffects: sideEffect)
     }
 
     public static func onTransition(
@@ -288,7 +286,7 @@ public enum StateMachineTypes {
         fileprivate typealias Factory = (State, Event) throws -> Self
 
         fileprivate let toState: State?
-        fileprivate let sideEffect: SideEffect?
+        fileprivate let sideEffects: [SideEffect]
     }
 
     public struct IncorrectTypeError: Error, CustomDebugStringConvertible {

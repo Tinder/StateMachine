@@ -58,12 +58,14 @@ final class StateMachine_Matter_Tests: XCTestCase, StateMachineBuilder {
                 }
             }
             onTransition {
-                guard case let .success(transition) = $0, let sideEffect = transition.sideEffect else { return }
-                switch sideEffect {
-                case .logMelted: logger.log(Message.melted)
-                case .logFrozen: logger.log(Message.frozen)
-                case .logVaporized: logger.log(Message.vaporized)
-                case .logCondensed: logger.log(Message.condensed)
+                guard case let .success(transition) = $0 else { return }
+                transition.sideEffects.forEach { sideEffect in
+                    switch sideEffect {
+                    case .logMelted: logger.log(Message.melted)
+                    case .logFrozen: logger.log(Message.frozen)
+                    case .logVaporized: logger.log(Message.vaporized)
+                    case .logCondensed: logger.log(Message.condensed)
+                    }
                 }
             }
         }
@@ -100,7 +102,7 @@ final class StateMachine_Matter_Tests: XCTestCase, StateMachineBuilder {
         expect(transition).to(equal(ValidTransition(fromState: .solid,
                                                     event: .melt,
                                                     toState: .liquid,
-                                                    sideEffect: .logMelted)))
+                                                    sideEffects: [.logMelted])))
         expect(self.logger).to(log(Message.melted))
     }
 
@@ -133,7 +135,7 @@ final class StateMachine_Matter_Tests: XCTestCase, StateMachineBuilder {
         expect(transition).to(equal(ValidTransition(fromState: .liquid,
                                                     event: .freeze,
                                                     toState: .solid,
-                                                    sideEffect: .logFrozen)))
+                                                    sideEffects: [.logFrozen])))
         expect(self.logger).to(log(Message.frozen))
     }
 
@@ -150,7 +152,7 @@ final class StateMachine_Matter_Tests: XCTestCase, StateMachineBuilder {
         expect(transition).to(equal(ValidTransition(fromState: .liquid,
                                                     event: .vaporize,
                                                     toState: .gas,
-                                                    sideEffect: .logVaporized)))
+                                                    sideEffects: [.logVaporized])))
         expect(self.logger).to(log(Message.vaporized))
     }
 
@@ -167,7 +169,7 @@ final class StateMachine_Matter_Tests: XCTestCase, StateMachineBuilder {
         expect(transition).to(equal(ValidTransition(fromState: .gas,
                                                     event: .condense,
                                                     toState: .liquid,
-                                                    sideEffect: .logCondensed)))
+                                                    sideEffects: [.logCondensed])))
         expect(self.logger).to(log(Message.condensed))
     }
 }
