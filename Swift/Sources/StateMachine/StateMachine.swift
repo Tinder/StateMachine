@@ -13,7 +13,7 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
         public struct Valid: CustomDebugStringConvertible {
 
             public var debugDescription: String {
-                return "fromState: \(fromState), event: \(event), toState: \(toState), sideEffect: \(sideEffects)"
+                return "fromState: \(fromState), event: \(event), toState: \(toState), sideEffects: \(sideEffects)"
             }
 
             public let fromState: State

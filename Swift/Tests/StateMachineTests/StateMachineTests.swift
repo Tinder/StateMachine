@@ -11,17 +11,17 @@ final class StateMachineTests: XCTestCase, StateMachineBuilder {
 
     enum State: StateMachineHashable {
 
-        case stateOne, stateTwo
+        case stateOne, stateTwo, stateThree
     }
 
     enum Event: StateMachineHashable {
 
-        case eventOne, eventTwo
+        case eventOne, eventTwo, eventThree
     }
 
-    enum SideEffect {
+    enum SideEffect: Equatable {
 
-        case commandOne, commandTwo, commandThree
+        case commandOne, commandTwo, commandThree, commandFour(Int)
     }
 
     typealias TestStateMachine = StateMachine<State, Event, SideEffect>
@@ -33,7 +33,7 @@ final class StateMachineTests: XCTestCase, StateMachineBuilder {
             initialState(_state)
             state(.stateOne) {
                 on(.eventOne) {
-                    dontTransition(emit: .commandOne)
+                    dontTransition(emit: .commandOne, .commandTwo)
                 }
                 on(.eventTwo) {
                     transition(to: .stateTwo, emit: .commandTwo)
@@ -43,7 +43,11 @@ final class StateMachineTests: XCTestCase, StateMachineBuilder {
                 on(.eventTwo) {
                     dontTransition(emit: .commandThree)
                 }
+                on(.eventThree) { _, event in
+                    transition(to: .stateThree, emit: .commandFour(try event.string()))
+                }
             }
+            state(.stateThree)
         }
     }
 
@@ -66,7 +70,7 @@ final class StateMachineTests: XCTestCase, StateMachineBuilder {
         expect(transition).to(equal(ValidTransition(fromState: .stateOne,
                                                     event: .eventOne,
                                                     toState: .stateOne,
-                                                    sideEffects: [.commandOne])))
+                                                    sideEffects: [.commandOne, .commandTwo])))
     }
 
     func testTransition() throws {
@@ -131,7 +135,7 @@ final class StateMachineTests: XCTestCase, StateMachineBuilder {
             .success(ValidTransition(fromState: .stateOne,
                                      event: .eventOne,
                                      toState: .stateOne,
-                                     sideEffects: [.commandOne])),
+                                     sideEffects: [.commandOne, .commandTwo])),
             .success(ValidTransition(fromState: .stateOne,
                                      event: .eventTwo,
                                      toState: .stateTwo,
@@ -190,6 +194,14 @@ final class StateMachineTests: XCTestCase, StateMachineBuilder {
 
         // Then
         expect(error).to(equal(.recursionDetected))
+    }
+
+    func testGettingNonExistingValue() throws {
+        // Given
+        let stateMachine: TestStateMachine = givenState(is: .stateTwo)
+
+        // Then
+        XCTAssertThrowsError(try stateMachine.transition(.eventThree))
     }
 }
 
