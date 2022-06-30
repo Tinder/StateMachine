@@ -101,6 +101,7 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
         }
     }
 
+
     class Matcher<T : Any, out R : T> private constructor(private val clazz: Class<R>) {
 
         private val predicates = mutableListOf<(T) -> Boolean>({ clazz.isInstance(it) })
@@ -123,6 +124,7 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
         }
     }
 
+    @StateMachineDsl
     class GraphBuilder<STATE : Any, EVENT : Any, SIDE_EFFECT : Any>(
         graph: Graph<STATE, EVENT, SIDE_EFFECT>? = null
     ) {
@@ -157,6 +159,7 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
             return Graph(requireNotNull(initialState), stateDefinitions.toMap(), onTransitionListeners.toList())
         }
 
+        @StateMachineDsl
         inner class StateDefinitionBuilder<S : STATE> {
 
             private val stateDefinition = Graph.State<STATE, EVENT, SIDE_EFFECT>()
@@ -167,23 +170,23 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
 
             fun <E : EVENT> on(
                 eventMatcher: Matcher<EVENT, E>,
-                createTransitionTo: S.(E) -> Graph.State.TransitionTo<STATE, SIDE_EFFECT>
+                createTransitionTo: TransitionToBuilder<S>.(E) -> Graph.State.TransitionTo<STATE, SIDE_EFFECT>
             ) {
                 stateDefinition.transitions[eventMatcher] = { state, event ->
                     @Suppress("UNCHECKED_CAST")
-                    createTransitionTo((state as S), event as E)
+                    TransitionToBuilder(state as S).createTransitionTo(event as E)
                 }
             }
 
             inline fun <reified E : EVENT> on(
-                noinline createTransitionTo: S.(E) -> Graph.State.TransitionTo<STATE, SIDE_EFFECT>
+                noinline createTransitionTo: TransitionToBuilder<S>.(E) -> Graph.State.TransitionTo<STATE, SIDE_EFFECT>
             ) {
                 return on(any(), createTransitionTo)
             }
 
             inline fun <reified E : EVENT> on(
                 event: E,
-                noinline createTransitionTo: S.(E) -> Graph.State.TransitionTo<STATE, SIDE_EFFECT>
+                noinline createTransitionTo: TransitionToBuilder<S>.(E) -> Graph.State.TransitionTo<STATE, SIDE_EFFECT>
             ) {
                 return on(eq(event), createTransitionTo)
             }
@@ -204,12 +207,16 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
 
             fun build() = stateDefinition
 
-            @Suppress("UNUSED") // The unused warning is probably a compiler bug.
-            fun S.transitionTo(state: STATE, sideEffect: SIDE_EFFECT? = null) =
-                Graph.State.TransitionTo(state, sideEffect)
+            @StateMachineDsl
+            inner class TransitionToBuilder<ST: S> internal constructor(private val state :ST) {
+                fun transitionTo(state: STATE, sideEffect: SIDE_EFFECT? = null) = Graph.State.TransitionTo(state, sideEffect)
 
-            @Suppress("UNUSED") // The unused warning is probably a compiler bug.
-            fun S.dontTransition(sideEffect: SIDE_EFFECT? = null) = transitionTo(this, sideEffect)
+                fun dontTransition(sideEffect: SIDE_EFFECT? = null) = transitionTo(state, sideEffect)
+
+                fun withCurrentState(stateEditor: ST.() -> Graph.State.TransitionTo<STATE, SIDE_EFFECT>): Graph.State.TransitionTo<STATE, SIDE_EFFECT> {
+                    return state.stateEditor()
+                }
+            }
         }
     }
 
@@ -228,3 +235,7 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
         }
     }
 }
+
+@DslMarker
+@Target(AnnotationTarget.CLASS, AnnotationTarget.TYPE)
+annotation class StateMachineDsl

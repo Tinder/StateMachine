@@ -158,18 +158,22 @@ internal class StateMachineTest {
             initialState(State.Locked(credit = 0))
             state<State.Locked> {
                 on<Event.InsertCoin> {
-                    val newCredit = credit + it.value
-                    if (newCredit >= FARE_PRICE) {
-                        transitionTo(State.Unlocked, Command.OpenDoors)
-                    } else {
-                        transitionTo(State.Locked(newCredit))
+                    withCurrentState {
+                        val newCredit = credit + it.value
+                        if (newCredit >= FARE_PRICE) {
+                            transitionTo(State.Unlocked, Command.OpenDoors)
+                        } else {
+                            transitionTo(State.Locked(newCredit))
+                        }
                     }
                 }
                 on<Event.AdmitPerson> {
                     dontTransition(Command.SoundAlarm)
                 }
                 on<Event.MachineDidFail> {
-                    transitionTo(State.Broken(this), Command.OrderRepair)
+                    withCurrentState {
+                        transitionTo(State.Broken(this), Command.OrderRepair)
+                    }
                 }
             }
             state<State.Unlocked> {
@@ -179,7 +183,9 @@ internal class StateMachineTest {
             }
             state<State.Broken> {
                 on<Event.MachineRepairDidComplete> {
-                    transitionTo(oldState)
+                    withCurrentState {
+                        transitionTo(oldState)
+                    }
                 }
             }
         }
