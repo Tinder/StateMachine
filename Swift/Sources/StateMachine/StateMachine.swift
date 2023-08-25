@@ -92,6 +92,21 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
     }
 
     @discardableResult
+    public func getSuccessors(_ state: State) -> [State] {
+        guard let events = states[state.hashableIdentifier] else {
+            return []
+        }
+
+        let states = events.compactMap { (event, factory) -> State? in
+            guard let event = event as? Event, let action = try? factory(state, event) else {
+                return nil
+            }
+            return action.toState
+        }
+        return states
+    }
+
+    @discardableResult
     public func transition(_ event: Event) throws -> Transition.Valid {
         guard !isNotifying
         else { throw StateMachineError.recursionDetected }
