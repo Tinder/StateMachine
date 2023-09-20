@@ -56,6 +56,10 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
     private let states: States
     private var observers: [Observer] = []
 
+    public var allStates: [State] {
+        return states.keys.compactMap {$0 as? State}
+    }
+
     private var isNotifying: Bool = false
 
     public init(@DefinitionBuilder build: () -> Definition) {
