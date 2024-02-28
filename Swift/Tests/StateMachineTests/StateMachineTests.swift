@@ -202,13 +202,13 @@ final class Logger {
     }
 }
 
-func log(_ expectedMessages: String...) -> Predicate<Logger> {
+func log(_ expectedMessages: String...) -> Matcher<Logger> {
     let expectedString: String = stringify(expectedMessages.joined(separator: "\\n"))
-    return Predicate {
+    return Matcher {
         let actualMessages: [String]? = try $0.evaluate()?.messages
         let actualString: String = stringify(actualMessages?.joined(separator: "\\n"))
         let message: ExpectationMessage = .expectedCustomValueTo("log <\(expectedString)>",
                                                                  actual: "<\(actualString)>")
-        return PredicateResult(bool: actualMessages == expectedMessages, message: message)
+        return MatcherResult(bool: actualMessages == expectedMessages, message: message)
     }
 }

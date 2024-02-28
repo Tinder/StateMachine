@@ -9,12 +9,14 @@ import XCTest
 
 final class StateMachine_Matter_Tests: XCTestCase, StateMachineBuilder {
 
-    enum State: StateMachineHashable {
+    @StateMachineHashable
+    enum State {
 
         case solid, liquid, gas
     }
 
-    enum Event: StateMachineHashable {
+    @StateMachineHashable
+    enum Event {
 
         case melt, freeze, vaporize, condense
     }
