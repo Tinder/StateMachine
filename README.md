@@ -169,9 +169,13 @@ expect(transition).to(equal(
 expect(logger).to(log(Message.melted))
 ```
 
+#### Pre-Swift 5.9 Compatibility
+
 <details>
 
-<summary><h4>Pre-Swift 5.9 Compatibility</h4></summary>
+<summary>Expand</summary>
+
+<br>
 
 This information is only applicable to Swift versions older than `5.9`:
 
