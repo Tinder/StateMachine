@@ -17,7 +17,7 @@ public struct StateMachineHashableMacro: ExtensionMacro {
     ) throws -> [ExtensionDeclSyntax] {
 
         guard let enumDecl: EnumDeclSyntax = .init(declaration)
-        else { throw StateMachineHashableMacroError.typeMustBeEnum }
+        else { throw StateMachineHashableMacroError.typeMustBeEnumeration }
 
         let elements: [EnumCaseElementSyntax] = enumDecl
             .memberBlock
@@ -28,7 +28,7 @@ public struct StateMachineHashableMacro: ExtensionMacro {
             .flatMap(\.elements)
 
         guard !elements.isEmpty
-        else { throw StateMachineHashableMacroError.enumMustHaveCases }
+        else { throw StateMachineHashableMacroError.enumerationMustHaveCases }
 
         let enumCases: [String] = elements
             .map(\.name.text)
