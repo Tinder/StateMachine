@@ -66,7 +66,7 @@ public struct StateMachineHashableMacro: ExtensionMacro {
             }
         }
 
-        let decl: DeclSyntax = """
+        let node: DeclSyntax = """
             extension \(type): StateMachineHashable {
 
                 enum HashableIdentifier {
@@ -88,6 +88,9 @@ public struct StateMachineHashableMacro: ExtensionMacro {
             }
             """
 
-        return decl.as(ExtensionDeclSyntax.self).flatMap { [$0] } ?? []
+        guard let extensionDecl: ExtensionDeclSyntax = .init(node)
+        else { throw StateMachineHashableMacroError.invalidExtension }
+
+        return [extensionDecl]
     }
 }
