@@ -44,24 +44,21 @@ public struct StateMachineHashableMacro: ExtensionMacro {
                     let associatedValues: String = (1...parameters.count)
                         .map { "value\($0)" }
                         .joined(separator: ", ")
-                    let `case`: String = """
+                    return """
                         case let .\(element.name.text)(\(associatedValues)):
                         return (\(associatedValues))
                         """
-                    return `case`
                 } else {
-                    let `case`: String = """
+                    return """
                         case let .\(element.name.text)(value):
                         return (value)
                         """
-                    return `case`
                 }
             } else {
-                let `case`: String = """
+                return """
                     case .\(element.name.text):
                     return ()
                     """
-                return `case`
             }
         }
 
