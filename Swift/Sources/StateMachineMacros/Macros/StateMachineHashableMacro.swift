@@ -4,6 +4,7 @@
 //
 
 import SwiftSyntax
+import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 
 public struct StateMachineHashableMacro: ExtensionMacro {
@@ -62,7 +63,7 @@ public struct StateMachineHashableMacro: ExtensionMacro {
             }
         }
 
-        let node: DeclSyntax = """
+        let node: SyntaxNodeString = """
             extension \(type): StateMachineHashable {
 
                 enum HashableIdentifier {
@@ -84,9 +85,6 @@ public struct StateMachineHashableMacro: ExtensionMacro {
             }
             """
 
-        guard let extensionDecl: ExtensionDeclSyntax = .init(node)
-        else { throw StateMachineHashableMacroError.invalidExtension }
-
-        return [extensionDecl]
+        return try [ExtensionDeclSyntax(node)]
     }
 }

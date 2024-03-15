@@ -7,7 +7,6 @@ public enum StateMachineHashableMacroError: Error, CustomStringConvertible {
 
     case typeMustBeEnumeration
     case enumerationMustHaveCases
-    case invalidExtension
 
     public var description: String {
         switch self {
@@ -15,8 +14,6 @@ public enum StateMachineHashableMacroError: Error, CustomStringConvertible {
             return "Type Must Be Enumeration"
         case .enumerationMustHaveCases:
             return "Enumeration Must Have Cases"
-        case .invalidExtension:
-            return "Invalid Extension"
         }
     }
 }
