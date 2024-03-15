@@ -38,8 +38,7 @@ public struct StateMachineHashableMacro: ExtensionMacro {
             .map(\.name.text)
             .map { "case .\($0):\nreturn .\($0)" }
 
-        var associatedValueCases: [String] = []
-        for element: EnumCaseElementSyntax in elements {
+        let associatedValueCases: [String] = elements.map { element in
             if let parameters: EnumCaseParameterListSyntax = element.parameterClause?.parameters, !parameters.isEmpty {
                 if parameters.count > 1 {
                     let associatedValues: String = (1...parameters.count)
@@ -49,20 +48,20 @@ public struct StateMachineHashableMacro: ExtensionMacro {
                         case let .\(element.name.text)(\(associatedValues)):
                         return (\(associatedValues))
                         """
-                    associatedValueCases.append(`case`)
+                    return `case`
                 } else {
                     let `case`: String = """
                         case let .\(element.name.text)(value):
                         return (value)
                         """
-                    associatedValueCases.append(`case`)
+                    return `case`
                 }
             } else {
                 let `case`: String = """
                     case .\(element.name.text):
                     return ()
                     """
-                associatedValueCases.append(`case`)
+                return `case`
             }
         }
 
