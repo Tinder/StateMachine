@@ -1,6 +1,6 @@
 //
-//  Created by Christopher Fuller on 12/21/19.
-//  Copyright © 2019 Tinder. All rights reserved.
+//  Copyright (c) 2019, Match Group, LLC
+//  BSD License, see LICENSE file for details
 //
 
 import Nimble
@@ -14,11 +14,13 @@ final class StateMachine_Turnstile_Tests: XCTestCase, StateMachineBuilder {
         static let farePrice: Int = 50
     }
 
+    @StateMachineHashable
     indirect enum State: Equatable {
 
         case locked(credit: Int), unlocked, broken(oldState: State)
     }
 
+    @StateMachineHashable
     enum Event: Equatable {
 
         case insertCoin(Int), admitPerson, machineDidFail, machineRepairDidComplete
@@ -192,69 +194,5 @@ final class StateMachine_Turnstile_Tests: XCTestCase, StateMachineBuilder {
                                                     event: .machineRepairDidComplete,
                                                     toState: .locked(credit: 15),
                                                     sideEffect: nil)))
-    }
-}
-
-extension StateMachine_Turnstile_Tests.State: StateMachineHashable {
-
-    enum HashableIdentifier {
-
-        case locked, unlocked, broken
-    }
-
-    var hashableIdentifier: HashableIdentifier {
-        switch self {
-        case .locked:
-            return .locked
-        case .unlocked:
-            return .unlocked
-        case .broken:
-            return .broken
-        }
-    }
-
-    var associatedValue: Any {
-        switch self {
-        case let .locked(credit):
-            return credit
-        case .unlocked:
-            return ()
-        case let .broken(oldState):
-            return oldState
-        }
-    }
-}
-
-extension StateMachine_Turnstile_Tests.Event: StateMachineHashable {
-
-    enum HashableIdentifier {
-
-        case insertCoin, admitPerson, machineDidFail, machineRepairDidComplete
-    }
-
-    var hashableIdentifier: HashableIdentifier {
-        switch self {
-        case .insertCoin:
-            return .insertCoin
-        case .admitPerson:
-            return .admitPerson
-        case .machineDidFail:
-            return .machineDidFail
-        case .machineRepairDidComplete:
-            return .machineRepairDidComplete
-        }
-    }
-
-    var associatedValue: Any {
-        switch self {
-        case let .insertCoin(value):
-            return value
-        case .admitPerson:
-            return ()
-        case .machineDidFail:
-            return ()
-        case .machineRepairDidComplete:
-            return ()
-        }
     }
 }

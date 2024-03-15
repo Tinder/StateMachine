@@ -16,7 +16,7 @@ The examples below create a `StateMachine` from the following state diagram for 
 
 Define states, events and side effects:
 
-~~~kotlin
+```kotlin
 sealed class State {
     object Solid : State()
     object Liquid : State()
@@ -36,11 +36,11 @@ sealed class SideEffect {
     object LogVaporized : SideEffect()
     object LogCondensed : SideEffect()
 }
-~~~
+```
 
 Initialize state machine and declare state transitions:
 
-~~~kotlin
+```kotlin
 val stateMachine = StateMachine.create<State, Event, SideEffect> {
     initialState(State.Solid)
     state<State.Solid> {
@@ -71,11 +71,11 @@ val stateMachine = StateMachine.create<State, Event, SideEffect> {
         }
     }
 }
-~~~
+```
 
 Perform state transitions:
 
-~~~kotlin
+```kotlin
 assertThat(stateMachine.state).isEqualTo(Solid)
 
 // When
@@ -87,7 +87,7 @@ assertThat(transition).isEqualTo(
     StateMachine.Transition.Valid(Solid, OnMelted, Liquid, LogMelted)
 )
 then(logger).should().log(ON_MELTED_MESSAGE)
-~~~
+```
 
 ## Swift Usage
 
@@ -103,11 +103,13 @@ class MyExample: StateMachineBuilder {
 Define states, events and side effects:
 
 ```swift
-enum State: StateMachineHashable {
+@StateMachineHashable
+enum State {
     case solid, liquid, gas
 }
 
-enum Event: StateMachineHashable {
+@StateMachineHashable
+enum Event {
     case melt, freeze, vaporize, condense
 }
 
@@ -167,12 +169,23 @@ expect(transition).to(equal(
 expect(logger).to(log(Message.melted))
 ```
 
-### Swift Enumerations with Associated Values
+#### Pre-Swift 5.9 Compatibility
 
-Due to Swift enumerations (as opposed to sealed classes in Kotlin),
-any `State` or `Event` enumeration defined with associated values will require [boilerplate implementation](https://github.com/Tinder/StateMachine/blob/c5c8155d55db5799190d9a06fbc31263c76c80b6/Swift/Tests/StateMachineTests/StateMachine_Turnstile_Tests.swift#L198-L260) for `StateMachineHashable` conformance.
+<details>
 
-The easiest way to create this boilerplate is by using the [Sourcery](https://github.com/krzysztofzablocki/Sourcery) Swift code generator along with the [AutoStateMachineHashable stencil template](https://github.com/Tinder/StateMachine/blob/main/Swift/Resources/AutoStateMachineHashable.stencil) provided in this repository. Once the codegen is setup and configured, adopt `AutoStateMachineHashable` instead of `StateMachineHashable` for the `State` and/or `Event` enumerations.
+<summary>Expand</summary>
+
+<br>
+
+This information is only applicable to Swift versions older than `5.9`:
+
+> ### Swift Enumerations with Associated Values
+>
+> Due to Swift enumerations (as opposed to sealed classes in Kotlin), any `State` or `Event` enumeration defined with associated values will require [boilerplate implementation](https://github.com/Tinder/StateMachine/blob/c5c8155d55db5799190d9a06fbc31263c76c80b6/Swift/Tests/StateMachineTests/StateMachine_Turnstile_Tests.swift#L198-L260) for `StateMachineHashable` conformance.
+>
+> The easiest way to create this boilerplate is by using the [Sourcery](https://github.com/krzysztofzablocki/Sourcery) Swift code generator along with the [AutoStateMachineHashable stencil template](https://github.com/Tinder/StateMachine/blob/main/Swift/Resources/AutoStateMachineHashable.stencil) provided in this repository. Once the codegen is setup and configured, adopt `AutoStateMachineHashable` instead of `StateMachineHashable` for the `State` and/or `Event` enumerations.
+
+</details>
 
 ## Examples
 
@@ -231,7 +244,7 @@ pod 'StateMachine', :git => 'https://github.com/Tinder/StateMachine.git'
 Thanks to [@nvinayshetty](https://github.com/nvinayshetty), you can visualize your state machines right in the IDE using the [State Arts](https://github.com/nvinayshetty/StateArts) Intellij [plugin](https://plugins.jetbrains.com/plugin/12193-state-art).
 
 ## License
-~~~
+```
 Copyright (c) 2018, Match Group, LLC
 All rights reserved.
 
@@ -256,4 +269,4 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
 ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-~~~
+```
