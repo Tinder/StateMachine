@@ -23,7 +23,7 @@ final class StateMachineMacrosTests: XCTestCase {
           expandedSource: """
           struct Example {}
           """,
-          diagnostics: [DiagnosticSpec(message: "Type Must Be Enum", line: 1, column: 1)],
+          diagnostics: [DiagnosticSpec(message: "Type Must Be Enumeration", line: 1, column: 1)],
           macros: macros
         )
     }
@@ -37,7 +37,7 @@ final class StateMachineMacrosTests: XCTestCase {
           expandedSource: """
           enum Example {}
           """,
-          diagnostics: [DiagnosticSpec(message: "Enum Must Have Cases", line: 1, column: 1)],
+          diagnostics: [DiagnosticSpec(message: "Enumeration Must Have Cases", line: 1, column: 1)],
           macros: macros
         )
     }
