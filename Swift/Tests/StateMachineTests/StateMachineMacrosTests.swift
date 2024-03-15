@@ -1,6 +1,6 @@
 //
-//  Created by Christopher Fuller on 12/21/19.
-//  Copyright © 2019 Tinder. All rights reserved.
+//  Copyright (c) 2019, Match Group, LLC
+//  BSD License, see LICENSE file for details
 //
 
 #if canImport(StateMachineMacros)

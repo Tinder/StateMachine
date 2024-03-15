@@ -1,5 +1,5 @@
 //
-//  Copyright (c) 2024, Match Group, LLC
+//  Copyright (c) 2019, Match Group, LLC
 //  BSD License, see LICENSE file for details
 //
 
