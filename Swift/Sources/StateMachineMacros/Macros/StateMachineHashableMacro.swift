@@ -16,15 +16,15 @@ public struct StateMachineHashableMacro: ExtensionMacro {
         in context: some MacroExpansionContext
     ) throws -> [ExtensionDeclSyntax] {
 
-        guard let enumDecl: EnumDeclSyntax = declaration.as(EnumDeclSyntax.self)
+        guard let enumDecl: EnumDeclSyntax = .init(declaration)
         else { throw StateMachineHashableMacroError.typeMustBeEnum }
 
         let elements: [EnumCaseElementSyntax] = enumDecl
             .memberBlock
             .members
-            .compactMap { $0.as(MemberBlockItemSyntax.self) }
+            .compactMap(MemberBlockItemSyntax.init)
             .map(\.decl)
-            .compactMap { $0.as(EnumCaseDeclSyntax.self) }
+            .compactMap(EnumCaseDeclSyntax.init)
             .flatMap(\.elements)
 
         guard !elements.isEmpty
