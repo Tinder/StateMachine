@@ -45,19 +45,19 @@ public struct StateMachineHashableMacro: ExtensionMacro {
                         .map { "value\($0)" }
                         .joined(separator: ", ")
                     return """
-                        case let .\(element.name.text)(\(associatedValues)):
-                        return (\(associatedValues))
+                                case let .\(element.name.text)(\(associatedValues)):
+                                    return (\(associatedValues))
                         """
                 } else {
                     return """
-                        case let .\(element.name.text)(value):
-                        return (value)
+                                case let .\(element.name.text)(value):
+                                    return (value)
                         """
                 }
             } else {
                 return """
-                    case .\(element.name.text):
-                    return ()
+                            case .\(element.name.text):
+                                return ()
                     """
             }
         }
@@ -72,13 +72,13 @@ public struct StateMachineHashableMacro: ExtensionMacro {
 
                 var hashableIdentifier: HashableIdentifier {
                     switch self {
-                    \(raw: hashableIdentifierCases.joined(separator: "\n"))
+            \(raw: hashableIdentifierCases.joined(separator: "\n"))
                     }
                 }
 
                 var associatedValue: Any {
                     switch self {
-                    \(raw: associatedValueCases.joined(separator: "\n"))
+            \(raw: associatedValueCases.joined(separator: "\n"))
                     }
                 }
             }
