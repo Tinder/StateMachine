@@ -11,17 +11,17 @@ final class StateMachineTests: XCTestCase, StateMachineBuilder {
 
     enum State: StateMachineHashable {
 
-        case stateOne, stateTwo
+        case stateOne, stateTwo, stateThree
     }
 
     enum Event: StateMachineHashable {
 
-        case eventOne, eventTwo
+        case eventOne, eventTwo, eventThree
     }
 
-    enum SideEffect {
+    enum SideEffect: Equatable {
 
-        case commandOne, commandTwo, commandThree
+        case commandOne, commandTwo, commandThree, commandFour(Int)
     }
 
     typealias TestStateMachine = StateMachine<State, Event, SideEffect>
@@ -33,7 +33,7 @@ final class StateMachineTests: XCTestCase, StateMachineBuilder {
             initialState(_state)
             state(.stateOne) {
                 on(.eventOne) {
-                    dontTransition(emit: .commandOne)
+                    dontTransition(emit: .commandOne, .commandTwo)
                 }
                 on(.eventTwo) {
                     transition(to: .stateTwo, emit: .commandTwo)
@@ -43,7 +43,11 @@ final class StateMachineTests: XCTestCase, StateMachineBuilder {
                 on(.eventTwo) {
                     dontTransition(emit: .commandThree)
                 }
+                on(.eventThree) { _, event in
+                    transition(to: .stateThree, emit: .commandFour(try event.string()))
+                }
             }
+            state(.stateThree)
         }
     }
 
@@ -66,7 +70,7 @@ final class StateMachineTests: XCTestCase, StateMachineBuilder {
         expect(transition).to(equal(ValidTransition(fromState: .stateOne,
                                                     event: .eventOne,
                                                     toState: .stateOne,
-                                                    sideEffect: .commandOne)))
+                                                    sideEffects: [.commandOne, .commandTwo])))
     }
 
     func testTransition() throws {
@@ -82,7 +86,7 @@ final class StateMachineTests: XCTestCase, StateMachineBuilder {
         expect(transition).to(equal(ValidTransition(fromState: .stateOne,
                                                     event: .eventTwo,
                                                     toState: .stateTwo,
-                                                    sideEffect: .commandTwo)))
+                                                    sideEffects: [.commandTwo])))
     }
 
     func testInvalidTransition() throws {
@@ -131,16 +135,16 @@ final class StateMachineTests: XCTestCase, StateMachineBuilder {
             .success(ValidTransition(fromState: .stateOne,
                                      event: .eventOne,
                                      toState: .stateOne,
-                                     sideEffect: .commandOne)),
+                                     sideEffects: [.commandOne, .commandTwo])),
             .success(ValidTransition(fromState: .stateOne,
                                      event: .eventTwo,
                                      toState: .stateTwo,
-                                     sideEffect: .commandTwo)),
+                                     sideEffects: [.commandTwo])),
             .failure(InvalidTransition()),
             .success(ValidTransition(fromState: .stateTwo,
                                      event: .eventTwo,
                                      toState: .stateTwo,
-                                     sideEffect: .commandThree))
+                                     sideEffects: [.commandThree]))
         ]))
     }
 
@@ -191,6 +195,14 @@ final class StateMachineTests: XCTestCase, StateMachineBuilder {
         // Then
         expect(error).to(equal(.recursionDetected))
     }
+
+    func testGettingNonExistingValue() throws {
+        // Given
+        let stateMachine: TestStateMachine = givenState(is: .stateTwo)
+
+        // Then
+        XCTAssertThrowsError(try stateMachine.transition(.eventThree))
+    }
 }
 
 final class Logger {
@@ -210,5 +222,15 @@ func log(_ expectedMessages: String...) -> Matcher<Logger> {
         let message: ExpectationMessage = .expectedCustomValueTo("log <\(expectedString)>",
                                                                  actual: "<\(actualString)>")
         return MatcherResult(bool: actualMessages == expectedMessages, message: message)
+    }
+}
+
+func noLog() -> Predicate<Logger> {
+    return Predicate {
+        let actualMessages: [String]? = try $0.evaluate()?.messages
+        let actualString: String = stringify(actualMessages?.joined(separator: "\\n"))
+        let message: ExpectationMessage = .expectedCustomValueTo("no logs",
+                                                                 actual: "<\(actualString)>")
+        return PredicateResult(bool: actualString.count == 0, message: message)
     }
 }
