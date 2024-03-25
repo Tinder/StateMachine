@@ -1,6 +1,6 @@
 # StateMachine
 
-[![CircleCI](https://circleci.com/gh/Tinder/StateMachine.svg?style=svg)](https://circleci.com/gh/Tinder/StateMachine)
+[![Swift](https://github.com/Tinder/StateMachine/actions/workflows/swift.yml/badge.svg)](https://github.com/Tinder/StateMachine/actions/workflows/swift.yml)
 
 A state machine library in Kotlin and Swift.
 
