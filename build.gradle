@@ -1,38 +1,106 @@
 buildscript {
-    ext.kotlin_version = '1.3.21'
+    ext.kotlin_version = '1.3.72'
+    ext.atomicfu_version = '0.14.2'
 
     repositories {
         mavenCentral()
         jcenter()
     }
     dependencies {
+        classpath "org.jetbrains.kotlinx:atomicfu-gradle-plugin:$atomicfu_version"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-        classpath 'com.vanniktech:gradle-maven-publish-plugin:0.8.0'
     }
 }
 
 group GROUP
 version VERSION_NAME
 
-apply plugin: 'com.vanniktech.maven.publish'
-apply plugin: 'kotlin'
+apply plugin: "org.jetbrains.kotlin.multiplatform"
+apply plugin: "kotlinx-atomicfu"
 
 repositories {
     mavenCentral()
 }
 
-dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
 
-    testImplementation 'junit:junit:4.12'
-    testImplementation 'com.nhaarman.mockitokotlin2:mockito-kotlin:2.1.0'
-    testImplementation "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"
-    testImplementation 'org.assertj:assertj-core:3.11.1'
-}
+kotlin {
+    jvm("jvm6")
+    jvm("jvm8")
 
-compileKotlin {
-    kotlinOptions.jvmTarget = JavaVersion.VERSION_1_8
-}
-compileTestKotlin {
-    kotlinOptions.jvmTarget = JavaVersion.VERSION_1_8
+    js {
+        browser {
+        }
+        nodejs {
+        }
+    }
+    // For ARM, should be changed to iosArm32 or iosArm64
+    // For Linux, should be changed to e.g. linuxX64
+    // For MacOS, should be changed to e.g. macosX64
+    // For Windows, should be changed to e.g. mingwX64
+    macosX64("macos")
+    linuxX64()
+    mingwX64()
+
+    sourceSets {
+        commonMain {
+            kotlin.srcDir('src/main/')
+            dependencies {
+                implementation kotlin('stdlib-common')
+                implementation "org.jetbrains.kotlinx:atomicfu-common:$atomicfu_version"
+            }
+        }
+        commonTest {
+            kotlin.srcDir('src/test/')
+            dependencies {
+                implementation kotlin('test-common')
+                implementation kotlin('test-annotations-common')
+            }
+        }
+
+        jvm6Main {
+            dependencies {
+                implementation kotlin('stdlib')
+                implementation kotlin('test-annotations-common')
+            }
+
+        }
+        jvm6Test {
+            dependencies {
+                implementation kotlin('test')
+                implementation kotlin('test-junit')
+            }
+        }
+
+        jvm8Main {
+            task {
+                kotlinOption.jvmTarget = JavaVersion.VERSION_1_8
+            }
+
+            dependencies {
+                implementation kotlin('stdlib-jdk8')
+                implementation kotlin('test-annotations-common')
+            }
+        }
+
+        jvm8Test {
+            dependencies {
+                implementation kotlin('test')
+                implementation kotlin('test-junit')
+            }
+        }
+        jsMain {
+            dependencies {
+                implementation kotlin('stdlib-js') }
+        }
+        jsTest {
+            dependencies {
+                implementation kotlin('test-js')
+            }
+        }
+        macosMain {
+        }
+        macosTest {
+        }
+
+    }
 }
