@@ -1,0 +1,18 @@
+version: 2
+
+jobs:
+  build:
+    docker:
+      - image: circleci/openjdk:11-jdk
+    environment:
+        TERM: dumb
+        GRADLE_OPTS: '-Dorg.gradle.jvmargs="-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap" -Dorg.gradle.parallel=false -Dorg.gradle.daemon=true'
+        CIRCLE_TEST_REPORTS: test-reports
+    resource_class: xlarge
+    parallelism: 4
+    steps:
+      - checkout
+      - run: if [ -e ./gradlew ]; then ./gradlew dependencies;else gradle dependencies;fi
+      - run: ./gradlew test
+      - run: mkdir -p $CIRCLE_TEST_REPORTS/junit/
+      - run: find . -type f -regex ".*/build/test-results/.*xml" -exec cp {} $CIRCLE_TEST_REPORTS/junit/ \;
