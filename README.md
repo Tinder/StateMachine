@@ -203,7 +203,7 @@ This information is only applicable to Swift versions older than `5.9`:
 
 `StateMachine` is available in Maven Central.
 
-Snapshots of the development version are available in [Sonatype's `snapshots` repository](https://oss.sonatype.org/content/repositories/snapshots/).
+Snapshots of the development version are available in [Sonatype's `snapshots` repository](https://s01.oss.sonatype.org/content/repositories/snapshots/).
 
 ### Maven
 
