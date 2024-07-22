@@ -6,7 +6,7 @@ class StateMachine<STATE : Any, EVENT : Any, SIDE_EFFECT : Any> private construc
     private val graph: Graph<STATE, EVENT, SIDE_EFFECT>
 ) {
 
-    private val stateRef = AtomicReference<STATE>(graph.initialState)
+    private val stateRef = AtomicReference(graph.initialState)
 
     val state: STATE
         get() = stateRef.get()

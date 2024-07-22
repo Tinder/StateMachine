@@ -1,13 +1,14 @@
 package com.tinder
 
+import com.google.common.truth.Truth.assertThat
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.then
-import org.assertj.core.api.Assertions.assertThat
-import org.assertj.core.api.Assertions.assertThatIllegalArgumentException
-import org.assertj.core.api.Assertions.assertThatIllegalStateException
+import org.junit.Assert.assertThrows
 import org.junit.Test
 import org.junit.experimental.runners.Enclosed
 import org.junit.runner.RunWith
+import java.lang.IllegalArgumentException
+import java.lang.IllegalStateException
 
 @RunWith(Enclosed::class)
 internal class StateMachineTest {
@@ -42,6 +43,7 @@ internal class StateMachineTest {
                     SideEffect.LogFrozen -> logger.log(ON_FROZEN_MESSAGE)
                     SideEffect.LogVaporized -> logger.log(ON_VAPORIZED_MESSAGE)
                     SideEffect.LogCondensed -> logger.log(ON_CONDENSED_MESSAGE)
+                    null -> Unit
                 }
             }
         }
@@ -127,23 +129,23 @@ internal class StateMachineTest {
             const val ON_CONDENSED_MESSAGE = "I condensed"
 
             sealed class State {
-                object Solid : State()
-                object Liquid : State()
-                object Gas : State()
+                data object Solid : State()
+                data object Liquid : State()
+                data object Gas : State()
             }
 
             sealed class Event {
-                object OnMelted : Event()
-                object OnFrozen : Event()
-                object OnVaporized : Event()
-                object OnCondensed : Event()
+                data object OnMelted : Event()
+                data object OnFrozen : Event()
+                data object OnVaporized : Event()
+                data object OnCondensed : Event()
             }
 
             sealed class SideEffect {
-                object LogMelted : SideEffect()
-                object LogFrozen : SideEffect()
-                object LogVaporized : SideEffect()
-                object LogCondensed : SideEffect()
+                data object LogMelted : SideEffect()
+                data object LogFrozen : SideEffect()
+                data object LogVaporized : SideEffect()
+                data object LogCondensed : SideEffect()
             }
 
             interface Logger {
@@ -336,22 +338,22 @@ internal class StateMachineTest {
 
             sealed class State {
                 data class Locked(val credit: Int) : State()
-                object Unlocked : State()
+                data object Unlocked : State()
                 data class Broken(val oldState: State) : State()
             }
 
             sealed class Event {
                 data class InsertCoin(val value: Int) : Event()
-                object AdmitPerson : Event()
-                object MachineDidFail : Event()
-                object MachineRepairDidComplete : Event()
+                data object AdmitPerson : Event()
+                data object MachineDidFail : Event()
+                data object MachineRepairDidComplete : Event()
             }
 
             sealed class Command {
-                object SoundAlarm : Command()
-                object CloseDoors : Command()
-                object OpenDoors : Command()
-                object OrderRepair : Command()
+                data object SoundAlarm : Command()
+                data object CloseDoors : Command()
+                data object OpenDoors : Command()
+                data object OrderRepair : Command()
             }
         }
     }
@@ -502,10 +504,9 @@ internal class StateMachineTest {
             @Test
             fun transition_givenUndeclaredState_shouldThrowIllegalStateException() {
                 // Then
-                assertThatIllegalStateException()
-                    .isThrownBy {
-                        stateMachine.transition(Event.E4)
-                    }
+                assertThrows(IllegalStateException::class.java) {
+                    stateMachine.transition(Event.E4)
+                }
             }
         }
 
@@ -514,7 +515,7 @@ internal class StateMachineTest {
             @Test
             fun create_givenNoInitialState_shouldThrowIllegalArgumentException() {
                 // Then
-                assertThatIllegalArgumentException().isThrownBy {
+                assertThrows(IllegalArgumentException::class.java) {
                     StateMachine.create<State, Event, SideEffect> {}
                 }
             }
@@ -522,23 +523,21 @@ internal class StateMachineTest {
 
         private companion object {
             private sealed class State {
-                object A : State()
-                object B : State()
-                object C : State()
-                object D : State()
+                data object A : State()
+                data object B : State()
+                data object C : State()
+                data object D : State()
             }
 
             private sealed class Event {
-                object E1 : Event()
-                object E2 : Event()
-                object E3 : Event()
-                object E4 : Event()
+                data object E1 : Event()
+                data object E2 : Event()
+                data object E3 : Event()
+                data object E4 : Event()
             }
 
             private sealed class SideEffect {
-                object SE1 : SideEffect()
-                object SE2 : SideEffect()
-                object SE3 : SideEffect()
+                data object SE1 : SideEffect()
             }
         }
     }
@@ -569,12 +568,12 @@ internal class StateMachineTest {
                         transitionTo(STATE_D)
                     }
                 }
-                state(STATE_B) {
-                    on(EVENT_3) {
+                state<String>(STATE_B) {
+                    on<Int>(EVENT_3) {
                         transitionTo(STATE_C, SIDE_EFFECT_1)
                     }
                 }
-                state(STATE_C) {
+                state<String>(STATE_C) {
                     onEnter(onStateCEnterListener1)
                     onEnter(onStateCEnterListener2)
                 }
@@ -680,10 +679,9 @@ internal class StateMachineTest {
             @Test
             fun transition_givenUndeclaredState_shouldThrowIllegalStateException() {
                 // Then
-                assertThatIllegalStateException()
-                    .isThrownBy {
-                        stateMachine.transition(EVENT_4)
-                    }
+                assertThrows(IllegalStateException::class.java) {
+                    stateMachine.transition(EVENT_4)
+                }
             }
         }
 
@@ -692,7 +690,7 @@ internal class StateMachineTest {
             @Test
             fun create_givenNoInitialState_shouldThrowIllegalArgumentException() {
                 // Then
-                assertThatIllegalArgumentException().isThrownBy {
+                assertThrows(IllegalArgumentException::class.java) {
                     StateMachine.create<String, Int, String> {}
                 }
             }
@@ -713,9 +711,12 @@ internal class StateMachineTest {
             @Test
             fun transition_givenMissingDestinationStateDefinition_shouldThrowIllegalStateExceptionWithStateName() {
                 // Then
-                assertThatIllegalStateException()
-                    .isThrownBy { stateMachine.transition(EVENT_1) }
-                    .withMessage("Missing definition for state ${STATE_B.javaClass.simpleName}!")
+                val exception = assertThrows(IllegalStateException::class.java) {
+                    stateMachine.transition(EVENT_1)
+                }
+                assertThat(exception.message).isEqualTo(
+                    "Missing definition for state ${STATE_B.javaClass.simpleName}!"
+                )
             }
         }
 
